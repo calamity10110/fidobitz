@@ -43,3 +43,57 @@ def test_mapping_module_uses_hook():
     assert isinstance(plan, dict)
     assert plan.get("success") is True
     assert plan.get("path") and plan["path"][0] == (0, 0)
+
+def test_astar_start_is_goal():
+    grid = [
+        [0, 0],
+        [0, 0],
+    ]
+    path = astar(grid, (0, 0), (0, 0))
+    assert path == [(0, 0)]
+
+def test_astar_no_path():
+    grid = [
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+    ]
+    path = astar(grid, (0, 0), (2, 0))
+    assert path == []
+
+def test_astar_start_out_of_bounds():
+    grid = [
+        [0, 0],
+        [0, 0],
+    ]
+    path = astar(grid, (-1, 0), (0, 0))
+    assert path == []
+
+def test_astar_goal_out_of_bounds():
+    grid = [
+        [0, 0],
+        [0, 0],
+    ]
+    path = astar(grid, (0, 0), (2, 0))
+    assert path == []
+
+def test_astar_start_is_obstacle():
+    grid = [
+        [1, 0],
+        [0, 0],
+    ]
+    path = astar(grid, (0, 0), (1, 1))
+    assert path == []
+
+def test_astar_goal_is_obstacle():
+    grid = [
+        [0, 0],
+        [0, 1],
+    ]
+    path = astar(grid, (0, 0), (1, 1))
+    assert path == []
+
+def test_astar_empty_grid():
+    grid = []
+    path = astar(grid, (0, 0), (0, 0))
+    assert path == []
