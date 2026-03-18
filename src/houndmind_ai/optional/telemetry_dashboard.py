@@ -329,7 +329,11 @@ _DASHBOARD_HTML = """
             @media(min-width:900px){.container{flex-direction:row}.panels{flex:1}.camera{flex:1}}
             .meta{color:var(--muted);font-size:0.85rem}
             .controls{display:flex;gap:0.5rem}
-            button{background:var(--accent);color:#042028;border:0;padding:0.4rem 0.6rem;border-radius:6px}
+            button{background:var(--accent);color:#042028;border:0;padding:0.4rem 0.6rem;border-radius:6px;cursor:pointer;transition:filter 0.2s, background 0.2s}
+            button:hover{filter:brightness(1.1)}
+            button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+            .btn-outline{background:transparent;border:1px solid #274454;color:var(--accent);padding:0.15rem 0.4rem;border-radius:6px}
+            .btn-outline:hover{background:rgba(56, 189, 248, 0.1)}
         </style>
     </head>
     <body>
@@ -338,13 +342,13 @@ _DASHBOARD_HTML = """
                 <div style="display:flex;gap:0.5rem;align-items:center">
                 <div class="meta">Live: <span id="vision_fps">-</span> FPS</div>
                 <div class="meta">Trace: <span id="trace_id">-</span></div>
-                <button id="copy_trace" style="background:transparent;border:1px solid #274454;color:var(--accent);padding:0.15rem 0.4rem;border-radius:6px">Copy</button>
-                <button id="download_bundle" style="background:transparent;border:1px solid #274454;color:var(--accent);padding:0.15rem 0.4rem;border-radius:6px">Download Bundle</button>
+                <button id="copy_trace" class="btn-outline">Copy</button>
+                <button id="download_bundle" class="btn-outline">Download Bundle</button>
             </div>
         </header>
         <div class="container">
             <div class="camera card">
-                <img id="camera" src="{{CAMERA_PATH}}" alt="camera"/>
+                <img id="camera" src="{{CAMERA_PATH}}" alt="Live camera feed"/>
             </div>
             <div class="panels">
                 <div class="card">
@@ -354,7 +358,7 @@ _DASHBOARD_HTML = """
                             <div class="meta">Updates every 0.5s</div>
                         </div>
                         <div class="controls">
-                            <button id="refresh">Refresh</button>
+                            <button id="refresh" aria-label="Refresh snapshot data">Refresh</button>
                         </div>
                     </div>
                     <pre id="output">Loading...</pre>
