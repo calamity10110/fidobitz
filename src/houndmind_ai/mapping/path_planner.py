@@ -10,21 +10,49 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
     passable: function to check if a cell is traversable
     Returns: list of (x, y) from start to goal, or [] if no path
     """
+    if not grid or not grid[0]:
+        return []
+
     w, h = len(grid[0]), len(grid)
-    open_set = [(0 + abs(goal[0]-start[0]) + abs(goal[1]-start[1]), 0, start, [start])]
-    closed = set()
+    gx, gy = goal
+    sx, sy = start
+
+    # Early returns for out of bounds
+    if not (0 <= sx < w and 0 <= sy < h and passable(grid[sy][sx])):
+        return []
+    if not (0 <= gx < w and 0 <= gy < h and passable(grid[gy][gx])):
+        return []
+
+    open_set = [(abs(gx-sx) + abs(gy-sy), 0, start)]
+    came_from = {}
+    g_score = {start: 0}
+
     while open_set:
-        est, cost, node, path = heapq.heappop(open_set)
+        _, cost, node = heapq.heappop(open_set)
+
         if node == goal:
+            path = [node]
+            curr = node
+            while curr in came_from:
+                curr = came_from[curr]
+                path.append(curr)
+            path.reverse()
             return path
-        if node in closed:
+
+        if cost > g_score.get(node, float('inf')):
             continue
-        closed.add(node)
+
         x, y = node
-        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nx, ny = x+dx, y+dy
-            if 0 <= nx < w and 0 <= ny < h and passable(grid[ny][nx]) and (nx,ny) not in closed:
-                heapq.heappush(open_set, (cost+1+abs(goal[0]-nx)+abs(goal[1]-ny), cost+1, (nx,ny), path+[(nx,ny)]))
+        tentative_g = cost + 1
+
+        for nx, ny in ((x-1,y), (x+1,y), (x,y-1), (x,y+1)):
+            if 0 <= nx < w and 0 <= ny < h and passable(grid[ny][nx]):
+                neighbor = (nx, ny)
+                if tentative_g < g_score.get(neighbor, float('inf')):
+                    came_from[neighbor] = node
+                    g_score[neighbor] = tentative_g
+                    f_score = tentative_g + abs(gx-nx) + abs(gy-ny)
+                    heapq.heappush(open_set, (f_score, tentative_g, neighbor))
     return []
 
 def default_path_planning_hook(mapping_state, sample, settings):
