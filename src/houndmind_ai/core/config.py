@@ -159,6 +159,12 @@ def load_config(path: Path | None = None) -> Config:
             config.settings["behavior"] = behavior_settings
             _ensure_action_sets(behavior_settings)
 
+    # Load robot definition if it exists.
+    robot_def_path = config_path.parent / "robot_definition.jsonc"
+    if robot_def_path.exists():
+        robot_def = _load_jsonc(robot_def_path)
+        config.settings["robot_definition"] = robot_def
+
     return config
 
 

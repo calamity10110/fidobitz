@@ -1,0 +1,66 @@
+// HoundMind Robot Definition Schema
+// This file defines the hardware capabilities, limits, and data formats.
+{
+  "robot": {
+    "model": "PiDog",
+    "manufacturer": "SunFounder",
+    "form_factor": "quadruped"
+  },
+  "joints": {
+    "head_yaw": {
+      "id": 0,
+      "range": [-90, 90],
+      "unit": "degrees",
+      "default_speed": 70
+    },
+    "head_pitch": {
+      "id": 1,
+      "range": [-30, 30],
+      "unit": "degrees",
+      "default_speed": 70
+    },
+    "head_roll": {
+      "id": 2,
+      "range": [-20, 20],
+      "unit": "degrees",
+      "default_speed": 70
+    },
+    "leg_front_left": { "id": [3, 4, 5], "type": "3-dof" },
+    "leg_front_right": { "id": [6, 7, 8], "type": "3-dof" },
+    "leg_back_left": { "id": [9, 10, 11], "type": "3-dof" },
+    "leg_back_right": { "id": [12, 13, 14], "type": "3-dof" },
+    "tail": { "id": 15, "range": [-45, 45] }
+  },
+  "sensors": {
+    "ultrasonic": {
+      "id": "distance_sensor",
+      "type": "HC-SR04",
+      "range": [2, 400],
+      "safe_range": [15, 200],
+      "unit": "cm",
+      "output_format": "float"
+    },
+    "imu": {
+      "type": "SH200Q",
+      "axes": ["x", "y", "z"],
+      "accel_range": [-2, 2],
+      "accel_unit": "g",
+      "gyro_range": [-2000, 2000],
+      "gyro_unit": "deg/s"
+    },
+    "touch": {
+      "type": "dual_touch",
+      "locations": ["left", "right"],
+      "output_format": "string",
+      "values": ["N", "L", "R", "B"]
+    },
+    "sound": {
+      "type": "ears",
+      "output_format": {
+        "detected": "bool",
+        "direction": "int"
+      },
+      "direction_range": [-180, 180]
+    }
+  }
+}
