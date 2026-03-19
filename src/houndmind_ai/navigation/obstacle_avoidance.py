@@ -3,12 +3,21 @@ from __future__ import annotations
 import logging
 import time
 from collections import Counter, deque
+from dataclasses import dataclass
 
 from typing import Any
 
 from houndmind_ai.core.module import Module
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DecisionData:
+    """Encapsulates a navigation decision to reduce parameter count."""
+    direction: str
+    score: float
+    confirmed: bool
 
 
 def _safe_float(val: Any, default: float) -> float:
@@ -93,8 +102,188 @@ class ObstacleAvoidanceModule(Module):
         now = time.time()
         turn_degrees_on_gap = _safe_int(settings.get("turn_degrees_on_gap", 30), 30)
 
-        # Evaluate gentle recovery state at the start
-        self._update_gentle_recovery_context(context, now)
+        # Action/result variables
+        nav_action = None
+        nav_turn = None
+        nav_led = None
+        nav_followup = None
+        emit_decision = None
+        stuck_recovery = None
+        # ...existing code...
+
+        # Emergency retreat if obstacle is too close.
+        if isinstance(distance, (int, float)) and 0 < distance <= emergency_stop_cm:
+            nav_action = avoid_action
+            self._record_no_go("forward", now)
+            nav_led = "retreat"
+        else:
+            clear_streak_min = int(settings.get("clear_path_streak_min", 0))
+            if (
+                not obstacle
+                and clear_streak_min > 0
+                and self._clear_path_streak >= clear_streak_min
+            ):
+                if settings.get("clear_path_skip_scans", True):
+                    nav_action = "forward"
+                    nav_led = "patrol"
+                    self._clear_path_streak += 1
+                    emit_decision = DecisionData("forward", 0.0, True)
+            else:
+                scan_result = self._scan_open_space(context, settings, now)
+                if scan_result is None:
+                    if now - self._last_scan_ts < scan_interval_s:
+                        if obstacle:
+                            nav_action = avoid_action
+                        else:
+                            nav_action = safe_action
+                    else:
+                        self._last_scan_ts = now
+                        nav_action = safe_action
+                else:
+                    direction, score, confirmed = scan_result
+                    logger.info(
+                        "Navigation scan: dir=%s score=%.1f confirmed=%s",
+                        direction,
+                        score,
+                        confirmed,
+                    )
+                    low_confidence_cooldown = _safe_float(
+                        settings.get("low_confidence_cooldown_s", 0.8), 0.8
+                    )
+                    retry_limit = _safe_int(settings.get("scan_retry_limit", 2), 2)
+                    if not confirmed:
+                        self._last_low_confidence_ts = now
+                        self._low_confidence_retries += 1
+                    else:
+                        self._low_confidence_retries = 0
+                    if now - self._last_low_confidence_ts < low_confidence_cooldown:
+                        if self._low_confidence_retries <= retry_limit:
+                            pass
+                        elif obstacle:
+                            nav_action = avoid_action
+                            self._record_no_go(direction, now)
+                        else:
+                            nav_action = safe_action
+                    elif not confirmed and obstacle:
+                        nav_action = avoid_action
+                        self._record_no_go(direction, now)
+                    else:
+                        # Detect approach events by comparing the forward baseline to current distance.
+                        approaching = False
+                        base_fwd = self._baseline_cm.get(
+                            0, distance if isinstance(distance, (int, float)) else None
+                        )
+                        if isinstance(base_fwd, (int, float)) and isinstance(distance, (int, float)):
+                            delta = max(0.0, base_fwd - distance)
+                            pct = (delta / base_fwd) if base_fwd > 1e-6 else 0.0
+                            approaching = (delta >= approach_delta_cm) or (pct >= approach_delta_pct)
+
+                        # Confirm approach events via vote window to avoid noise.
+                        approach_window = max(
+                            1, _safe_int(settings.get("approach_confirm_window", 3), 3)
+                        )
+                        if self._approach_votes.maxlen != approach_window:
+                            self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
+                        self._approach_votes.append(bool(approaching))
+                        approach_confirmed = (
+                            sum(1 for v in self._approach_votes if v)
+                            >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
+                        )
+
+                        if approach_confirmed and now - self._last_approach_ts >= approach_cooldown_s:
+                            nav_action = avoid_action
+                            nav_followup = {
+                                "type": "retreat_turn",
+                                "backup_steps": backup_steps,
+                                "direction": retreat_turn_direction,
+                            }
+                            nav_led = "retreat"
+                            self._record_no_go(direction, now)
+                            self._last_approach_ts = now
+                            self._record_avoidance(now)
+                        elif self._check_stuck(context, settings, now):
+                            self._apply_avoidance_strategy(context, settings, avoid_action)
+                            self._record_avoidance(now)
+                            self._stuck_count += 1
+                            stuck_recovery = {
+                                "timestamp": now,
+                                "count": self._stuck_count,
+                                "strategy": self._last_strategy,
+                            }
+                            # Activate gentle recovery if threshold reached and not already active
+                            if (
+                                not self._gentle_recovery_active
+                                and self._stuck_count >= gentle_recovery_threshold
+                            ):
+                                self._gentle_recovery_active = True
+                                self._gentle_recovery_until = now + gentle_recovery_cooldown
+                        else:
+                            direction = self._apply_no_go_bias(direction, now, settings)
+                            if direction == "left":
+                                # First consult the lightweight occupancy grid (if enabled),
+                                # then apply the higher-level mapping bias and SLAM hints.
+                                direction = self._apply_grid_bias(context, settings, direction)
+                                direction = self._apply_mapping_bias(context, settings, direction)
+                                direction = self._apply_slam_bias(context, settings, direction)
+                                if self._is_dead_end(direction):
+                                    direction = "right"
+                                if self._turn_cooldown_active(settings):
+                                    direction = "forward"
+                                nav_turn = {"direction": direction, "degrees": turn_degrees_on_gap}
+                                nav_action = "turn left"
+                                nav_led = "turn"
+                                self._record_turn(direction)
+                            elif direction == "right":
+                                direction = self._apply_grid_bias(context, settings, direction)
+                                direction = self._apply_mapping_bias(context, settings, direction)
+                                direction = self._apply_slam_bias(context, settings, direction)
+                                if self._is_dead_end(direction):
+                                    direction = "left"
+                                if self._turn_cooldown_active(settings):
+                                    direction = "forward"
+                                nav_turn = {"direction": direction, "degrees": turn_degrees_on_gap}
+                                nav_action = "turn right"
+                                nav_led = "turn"
+                                self._record_turn(direction)
+                            elif isinstance(distance, (int, float)) and distance < safe_distance_cm:
+                                nav_action = avoid_action
+                                nav_led = "obstacle"
+                                self._record_no_go("forward", now)
+                            else:
+                                nav_action = "forward"
+                                nav_led = "patrol"
+                                self._clear_path_streak += 1
+                            emit_decision = DecisionData(direction, score, confirmed)
+
+        # Set all context state at the end
+        if nav_action is not None:
+            context.set("navigation_action", nav_action)
+        if nav_turn is not None:
+            context.set("navigation_turn", nav_turn)
+        if nav_led is not None:
+            self._set_nav_led(context, nav_led)
+        if nav_followup is not None:
+            context.set("navigation_followup", nav_followup)
+        if emit_decision is not None:
+            self._emit_navigation_decision(context, settings, emit_decision)
+        if stuck_recovery is not None:
+            context.set("stuck_recovery", stuck_recovery)
+
+        # Always set gentle recovery state at the END of tick, using latest time
+        now = time.time()
+        if self._gentle_recovery_active or now < self._gentle_recovery_until:
+            if now >= self._gentle_recovery_until:
+                self._gentle_recovery_active = False
+                self._stuck_count = 0
+                context.set("gentle_recovery_active", False)
+                context.set("energy_speed_hint", None)
+            else:
+                context.set("gentle_recovery_active", True)
+                context.set("gentle_recovery_until", self._gentle_recovery_until)
+                context.set("energy_speed_hint", "slow")
+        else:
+            context.set("gentle_recovery_active", False)
+            context.set("energy_speed_hint", None)
 
         # Emergency retreat if obstacle is too close.
         if isinstance(distance, (int, float)) and 0 < distance <= emergency_stop_cm:
@@ -115,7 +304,7 @@ class ObstacleAvoidanceModule(Module):
                 context.set("navigation_action", "forward")
                 self._set_nav_led(context, "patrol")
                 self._clear_path_streak += 1
-                self._emit_navigation_decision(context, settings, "forward", 0.0, True)
+                self._emit_navigation_decision(context, settings, DecisionData("forward", 0.0, True))
                 return
 
         scan_result = self._scan_open_space(context, settings, now)
@@ -259,7 +448,7 @@ class ObstacleAvoidanceModule(Module):
             self._set_nav_led(context, "patrol")
             self._clear_path_streak += 1
 
-        self._emit_navigation_decision(context, settings, direction, score, confirmed)
+        self._emit_navigation_decision(context, settings, DecisionData(direction, score, confirmed))
 
     def _scan_open_space(
         self, context, settings, now: float
@@ -365,16 +554,16 @@ class ObstacleAvoidanceModule(Module):
         return direction, score, confirmed
 
     def _emit_navigation_decision(
-        self, context, settings, direction: str, score: float, confirmed: bool
+        self, context, settings, decision_data: DecisionData
     ) -> None:
         if not settings.get("log_decision_enabled", True):
             return
         now = time.time()
         decision = {
             "timestamp": now,
-            "direction": direction,
-            "score": score,
-            "confirmed": confirmed,
+            "direction": decision_data.direction,
+            "score": decision_data.score,
+            "confirmed": decision_data.confirmed,
             "clear_path_streak": self._clear_path_streak,
             "low_confidence_retries": self._low_confidence_retries,
         }
@@ -396,13 +585,8 @@ class ObstacleAvoidanceModule(Module):
         maxlen = self._dead_end_cache.maxlen
         if maxlen is None or len(self._dead_end_cache) < maxlen:
             return False
-        neg = 0
-        pos = 0
-        for v in self._dead_end_cache:
-            if v < 0:
-                neg += 1
-            elif v > 0:
-                pos += 1
+        neg = self._dead_end_cache.count(-1)
+        pos = self._dead_end_cache.count(1)
         if direction == "left" and neg > pos:
             return True
         if direction == "right" and pos > neg:

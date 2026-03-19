@@ -251,6 +251,20 @@ class FaceRecognitionModule(Module):
         self._http_thread.start()
         logger.info("Face recognition HTTP server listening on %s:%s", host, port)
 
+    def _apply_lbph_recognition(self, entry: dict[str, Any], face_roi: Any, threshold: float) -> None:
+        """Applies LBPH face recognition to a detected face ROI."""
+        if self._recognizer is None:
+            return
+
+        try:
+            label_id, confidence = self._recognizer.predict(face_roi)
+            name = self._label_map.get(int(label_id), "unknown")
+            entry.update({"label": name, "confidence": float(confidence)})
+            if confidence > threshold:
+                entry["label"] = "unknown"
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("LBPH prediction failed for ROI with shape %s: %s", getattr(face_roi, 'shape', 'unknown'), exc, exc_info=True)
+
     def _detect_opencv(self, frame, settings: dict) -> list[dict[str, Any]]:
         if self._cv2 is None or self._cascade is None:
             return []
@@ -273,16 +287,8 @@ class FaceRecognitionModule(Module):
         threshold = float(lbph_settings.get("confidence_threshold", 70.0))
         for x, y, w, h in faces:
             entry: dict[str, Any] = {"bbox": [int(x), int(y), int(w), int(h)]}
-            if self._recognizer is not None:
-                face_roi = gray[y : y + h, x : x + w]
-                try:
-                    label_id, confidence = self._recognizer.predict(face_roi)
-                    name = self._label_map.get(int(label_id), "unknown")
-                    entry.update({"label": name, "confidence": float(confidence)})
-                    if confidence > threshold:
-                        entry["label"] = "unknown"
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("LBPH prediction failed: %s", exc)
+            face_roi = gray[y : y + h, x : x + w]
+            self._apply_lbph_recognition(entry, face_roi, threshold)
             results.append(entry)
         return results
 
