@@ -8,9 +8,161 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+from typing import Any
+
 from houndmind_ai.core.module import Module
 
 logger = logging.getLogger(__name__)
+
+
+class TelemetryHTTPHandler(BaseHTTPRequestHandler):
+    """HTTP request handler for the telemetry dashboard.
+
+    A class attribute `module` is dynamically attached to the class
+    before instantiation by ThreadingHTTPServer.
+    """
+    module: "TelemetryDashboardModule"
+
+    def _send_json(self, payload: dict, status: int = 200) -> None:
+        data = json.dumps(payload, default=str).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _auth_ok(self, params: dict) -> bool:
+        token = getattr(self.module, "_auth_token", None)
+        if not token:
+            return False
+        # check header first
+        hdr = self.headers.get("X-Auth-Token")
+        if hdr == token:
+            return True
+        # then query param
+        q = params.get("auth_token", [None])[0]
+        if q == token:
+            return True
+        return False
+
+    def _handle_status(self) -> None:
+        self._send_json({"status": "ok"})
+
+    def _handle_snapshot(self, params: dict) -> None:
+        # Allow filtering by trace id via header or query parameter
+        header_trace = self.headers.get("X-Trace-Id")
+        query_trace = params.get("trace_id", [None])[0]
+        req_trace = header_trace or query_trace
+        if req_trace:
+            snap = self.module.get_snapshot_for_trace(req_trace)
+            if snap is None:
+                self._send_json({"error": "not found"}, status=404)
+                return
+            self._send_json(snap)
+            return
+        self._send_json(self.module._snapshot)
+
+    def _handle_download_slam_map(self) -> None:
+        data = self.module._snapshot.get("slam_map_data")
+        if data is None:
+            self._send_json({"error": "no map data"}, status=404)
+            return
+        # Serve as JSON
+        self.send_response(200)
+        payload = json.dumps({"map": data}, default=str).encode("utf-8")
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _handle_download_support_bundle(self, params: dict) -> None:
+        # Accept trace_id via header or query
+        header_trace = self.headers.get("X-Trace-Id")
+        query_trace = params.get("trace_id", [None])[0]
+        req_trace = header_trace or query_trace or self.module._snapshot.get("trace_id")
+        if not req_trace:
+            self._send_json({"error": "trace_id required"}, status=400)
+            return
+        zip_path = self.module.create_support_bundle_for_trace(req_trace)
+        if not zip_path:
+            self._send_json({"error": "failed to create bundle"}, status=500)
+            return
+        try:
+            with open(zip_path, "rb") as fh:
+                data = fh.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json({"error": str(exc)}, status=500)
+
+    def _handle_download_slam_trajectory(self) -> None:
+        data = self.module._snapshot.get("slam_trajectory")
+        if data is None:
+            self._send_json({"error": "no trajectory"}, status=404)
+            return
+        self.send_response(200)
+        payload = json.dumps({"trajectory": data}, default=str).encode("utf-8")
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _handle_dashboard_html(self) -> None:
+        # Inject configured camera path into the dashboard HTML
+        html = _DASHBOARD_HTML.replace(
+            "{{CAMERA_PATH}}", str(getattr(self.module, "_camera_path", "/camera"))
+        ).replace(
+            "{{AUTH_TOKEN}}", str(getattr(self.module, "_auth_token", ""))
+        ).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Length", str(len(html)))
+        self.end_headers()
+        self.wfile.write(html)
+
+    def do_GET(self) -> None:
+        parsed = urlparse(self.path)
+        path = parsed.path
+        params = parse_qs(parsed.query)
+
+        # Public endpoint
+        if path == "/status":
+            self._handle_status()
+            return
+
+        # All other endpoints require authentication
+        if not self._auth_ok(params):
+            self._send_json({"error": "unauthorized"}, status=401)
+            return
+
+        if path == "/snapshot":
+            self._handle_snapshot(params)
+            return
+
+        if path == "/download_slam_map":
+            self._handle_download_slam_map()
+            return
+
+        if path == "/download_support_bundle":
+            self._handle_download_support_bundle(params)
+            return
+
+        if path == "/download_slam_trajectory":
+            self._handle_download_slam_trajectory()
+            return
+
+        if path == "/":
+            self._handle_dashboard_html()
+            return
+
+        self._send_json({"error": "Not found"}, status=404)
+
+    def log_message(self, format: str, *args: Any) -> None:
+        # Suppress default HTTP server logging
+        return
 
 
 class TelemetryDashboardModule(Module):
@@ -176,133 +328,12 @@ class TelemetryDashboardModule(Module):
         if host == "0.0.0.0":
             logger.warning("Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
 
-        module = self
-
-        class Handler(BaseHTTPRequestHandler):
-            def _send_json(self, payload, status=200):
-                data = json.dumps(payload, default=str).encode("utf-8")
-                self.send_response(status)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
-
-            def do_GET(self):
-                parsed = urlparse(self.path)
-                path = parsed.path
-                params = parse_qs(parsed.query)
-
-                # Simple auth check: require header `X-Auth-Token` or query `auth_token`.
-                def _auth_ok():
-                    token = getattr(module, "_auth_token", None)
-                    if not token:
-                        return False
-                    # check header first
-                    hdr = self.headers.get("X-Auth-Token")
-                    if hdr == token:
-                        return True
-                    # then query param
-                    q = params.get("auth_token", [None])[0]
-                    if q == token:
-                        return True
-                    return False
-
-                # Public endpoint
-                if path == "/status":
-                    self._send_json({"status": "ok"})
-                    return
-
-                # All other endpoints require authentication
-                if not _auth_ok():
-                    self._send_json({"error": "unauthorized"}, status=401)
-                    return
-
-                if path == "/snapshot":
-                    # Allow filtering by trace id via header or query parameter
-                    header_trace = self.headers.get("X-Trace-Id")
-                    query_trace = params.get("trace_id", [None])[0]
-                    req_trace = header_trace or query_trace
-                    if req_trace:
-                        snap = module.get_snapshot_for_trace(req_trace)
-                        if snap is None:
-                            self._send_json({"error": "not found"}, status=404)
-                            return
-                        self._send_json(snap)
-                        return
-                    self._send_json(module._snapshot)
-                    return
-
-                if path == "/download_slam_map":
-                    data = module._snapshot.get("slam_map_data")
-                    if data is None:
-                        self._send_json({"error": "no map data"}, status=404)
-                        return
-                    # Serve as JSON
-                    self.send_response(200)
-                    payload = json.dumps({"map": data}, default=str).encode("utf-8")
-                    self.send_header("Content-Type", "application/json")
-                    self.send_header("Content-Length", str(len(payload)))
-                    self.end_headers()
-                    self.wfile.write(payload)
-                    return
-
-                if path == "/download_support_bundle":
-                    # Accept trace_id via header or query
-                    header_trace = self.headers.get("X-Trace-Id")
-                    query_trace = params.get("trace_id", [None])[0]
-                    req_trace = header_trace or query_trace or module._snapshot.get("trace_id")
-                    if not req_trace:
-                        self._send_json({"error": "trace_id required"}, status=400)
-                        return
-                    zip_path = module.create_support_bundle_for_trace(req_trace)
-                    if not zip_path:
-                        self._send_json({"error": "failed to create bundle"}, status=500)
-                        return
-                    try:
-                        with open(zip_path, "rb") as fh:
-                            data = fh.read()
-                        self.send_response(200)
-                        self.send_header("Content-Type", "application/zip")
-                        self.send_header("Content-Length", str(len(data)))
-                        self.end_headers()
-                        self.wfile.write(data)
-                    except Exception as exc:  # noqa: BLE001
-                        self._send_json({"error": str(exc)}, status=500)
-                    return
-
-                if path == "/download_slam_trajectory":
-                    data = module._snapshot.get("slam_trajectory")
-                    if data is None:
-                        self._send_json({"error": "no trajectory"}, status=404)
-                        return
-                    self.send_response(200)
-                    payload = json.dumps({"trajectory": data}, default=str).encode("utf-8")
-                    self.send_header("Content-Type", "application/json")
-                    self.send_header("Content-Length", str(len(payload)))
-                    self.end_headers()
-                    self.wfile.write(payload)
-                    return
-
-                if path == "/":
-                    # Inject configured camera path into the dashboard HTML
-                    html = _DASHBOARD_HTML.replace(
-                        "{{CAMERA_PATH}}", str(getattr(module, "_camera_path", "/camera"))
-                    ).replace(
-                        "{{AUTH_TOKEN}}", str(getattr(module, "_auth_token", ""))
-                    ).encode("utf-8")
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html")
-                    self.send_header("Content-Length", str(len(html)))
-                    self.end_headers()
-                    self.wfile.write(html)
-                    return
-                self._send_json({"error": "Not found"}, status=404)
-
-            def log_message(self, format, *args):
-                return
+        # Create a subclass of our handler that has this module instance bound to it
+        class BoundHandler(TelemetryHTTPHandler):
+            module = self
 
         try:
-            server = ThreadingHTTPServer((host, port), Handler)
+            server = ThreadingHTTPServer((host, port), BoundHandler)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to start telemetry server: %s", exc)
             return
