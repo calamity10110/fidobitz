@@ -256,13 +256,19 @@ def test_append_event_trimming():
     assert logger._events[2]["n"] == 4
 
 
-def test_append_event_writes_to_file():
+def test_append_event_write_jsonl():
     logger = EventLoggerModule("test_logger")
-    settings = {"event_log_max_entries": 3, "event_log_file_enabled": True}
+    settings = {"event_log_file_enabled": True}
 
     with patch.object(logger, "_write_jsonl") as m_write:
+        # Should write because event_log_file_enabled is True
         logger._append_event({"n": 1}, settings)
         m_write.assert_called_once_with({"n": 1}, settings)
+
+        m_write.reset_mock()
+        # Should also write when event_log_file_enabled is not specified (defaults to True)
+        logger._append_event({"n": 2}, {})
+        m_write.assert_called_once_with({"n": 2}, {})
 
 
 def test_stop():
