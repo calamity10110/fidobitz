@@ -2,6 +2,7 @@ import curses
 import time
 import threading
 import logging
+from typing import Any
 from houndmind_ai.core.module import Module
 
 logger = logging.getLogger(__name__)
@@ -15,13 +16,13 @@ class TUIControlPanelModule(Module):
 
     def __init__(self, name: str, enabled: bool = True, required: bool = False) -> None:
         super().__init__(name, enabled=enabled, required=required)
-        self.available = False
-        self._thread = None
+        self.available: bool = False
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
-        self._snapshot = {}
-        self._last_ts = 0.0
-        self._vision_fps = None
-        self._last_vision_ts = None
+        self._snapshot: dict[str, Any] = {}
+        self._last_ts: float = 0.0
+        self._vision_fps: float | None = None
+        self._last_vision_ts: float | None = None
         self._lock = threading.Lock()
 
     def start(self, context) -> None:
