@@ -36,15 +36,18 @@ def test_gentle_recovery_triggers_and_clears(monkeypatch):
     module.tick(context)
     print(f"Tick 0: context={dict(context)}, _gentle_recovery_active={module._gentle_recovery_active}")
     assert context.get("gentle_recovery_active") is False
-    # Gentle recovery should activate after the first tick
+    # Tick 2: _stuck_count reaches 2, still inactive
     module.tick(context)
-    print(f"Tick 1: context={dict(context)}, _gentle_recovery_active={module._gentle_recovery_active}")
+    assert context.get("gentle_recovery_active") is False
+    assert module._gentle_recovery_active is False
+    assert context.get("energy_speed_hint") is None
+    # Tick 3: _stuck_count reaches 3, gentle recovery activates
+    module.tick(context)
     assert context.get("gentle_recovery_active") is True
     assert module._gentle_recovery_active is True
     assert context.get("energy_speed_hint") == "slow"
-    # Remain active for subsequent ticks
+    # Tick 4: Remain active for subsequent ticks
     module.tick(context)
-    print(f"Tick 2: context={dict(context)}, _gentle_recovery_active={module._gentle_recovery_active}")
     assert context.get("gentle_recovery_active") is True
     # Simulate cooldown expiry
     now = time.time()

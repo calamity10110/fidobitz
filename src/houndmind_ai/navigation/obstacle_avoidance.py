@@ -406,6 +406,7 @@ class ObstacleAvoidanceModule(Module):
             ):
                 self._gentle_recovery_active = True
                 self._gentle_recovery_until = now + gentle_recovery_cooldown
+                self._update_gentle_recovery_context(context, now)
             return
 
         direction = self._apply_no_go_bias(direction, now, settings)
@@ -882,3 +883,18 @@ class ObstacleAvoidanceModule(Module):
             best_angle = max(angles, key=lambda a: distances.get(a, -1.0))
             best_score = distances.get(best_angle, 0.0)
         return best_angle, best_score
+
+    def _update_gentle_recovery_context(self, context, now: float) -> None:
+        if self._gentle_recovery_active or now < self._gentle_recovery_until:
+            if now >= self._gentle_recovery_until:
+                self._gentle_recovery_active = False
+                self._stuck_count = 0
+                context.set("gentle_recovery_active", False)
+                context.set("energy_speed_hint", None)
+            else:
+                context.set("gentle_recovery_active", True)
+                context.set("gentle_recovery_until", self._gentle_recovery_until)
+                context.set("energy_speed_hint", "slow")
+        else:
+            context.set("gentle_recovery_active", False)
+            context.set("energy_speed_hint", None)
