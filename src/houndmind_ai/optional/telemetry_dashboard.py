@@ -211,7 +211,8 @@ class TelemetryDashboardModule(Module):
             # Import the collect function from tools
             from tools.collect_support_bundle import collect
 
-            tmp = Path(tempfile.mkdtemp()) / f"support_bundle_{trace_id}.zip"
+            safe_trace_id = Path(trace_id).name
+            tmp = Path(tempfile.mkdtemp()) / f"support_bundle_{safe_trace_id}.zip"
             # Set env var so the collector records the trace id
             import os
 
