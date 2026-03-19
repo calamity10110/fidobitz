@@ -1,44 +1,41 @@
 import pytest
-import time
 from unittest.mock import patch
 from houndmind_ai.safety.service_watchdog import ServiceWatchdogModule
 
 class DummyContext:
     def __init__(self, data=None):
-        self._data = data or {}
-        self._set_calls = {}
+        self.data = data or {}
 
     def get(self, key, default=None):
-        return self._data.get(key, default)
+        return self.data.get(key, default)
 
     def set(self, key, value):
-        self._set_calls[key] = value
-        self._data[key] = value
+        self.data[key] = value
 
-def test_service_watchdog_disabled():
-    context = DummyContext({
-        "config.safety.service_watchdog": {
-            "enabled": False
-        },
+def test_service_watchdog_module_initialization():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    assert module.status.enabled is True
+
+def test_tick_disabled():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    ctx = DummyContext({
         "settings": {
             "service_watchdog": {
                 "enabled": False
             }
         }
     })
-    module = ServiceWatchdogModule("watchdog")
-    module.tick(context)
-    # Should return immediately, so no 'service_watchdog_status' set
-    assert "service_watchdog_status" not in context._set_calls
 
-@patch("time.time")
-def test_service_watchdog_status_update(mock_time):
-    mock_time.return_value = 1000.0
-    context = DummyContext({
-        "config.safety.service_watchdog": {
-            "enabled": True,
-            "status_interval_s": 1.0
-        },
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
+
+    # Should not set any status or restart anything
+    assert "service_watchdog_status" not in ctx.data
+    assert "restart_modules" not in ctx.data
+
+def test_tick_status_update():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    ctx = DummyContext({
         "settings": {
             "service_watchdog": {
                 "enabled": True,
@@ -46,205 +43,237 @@ def test_service_watchdog_status_update(mock_time):
             }
         }
     })
-    module = ServiceWatchdogModule("watchdog")
-    # Initial status
-    module.tick(context)
-    assert "service_watchdog_status" in context._set_calls
-    assert context._set_calls["service_watchdog_status"]["timestamp"] == 1000.0
 
-    # Tick again without time change -> no update (due to interval)
-    context._set_calls.clear()
-    module.tick(context)
-    assert "service_watchdog_status" not in context._set_calls
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
 
-    # Tick after interval -> update
-    mock_time.return_value = 1001.0
-    module.tick(context)
-    assert "service_watchdog_status" in context._set_calls
+    assert "service_watchdog_status" in ctx.data
+    status = ctx.data["service_watchdog_status"]
+    assert status["timestamp"] == 100.0
+    assert status["restart_counts"] == {}
 
-@patch("time.time")
-def test_restart_on_error(mock_time):
-    mock_time.return_value = 1000.0
-    context = DummyContext({
-        "config.safety.service_watchdog": {
-            "enabled": True,
-            "monitor_modules": ["test_module"],
-            "restart_on_error": True,
-            "restart_on_stale": False,
-            "restart_cooldown_s": 5.0,
-            "max_restarts": 3
-        },
+    # Tick again within the interval, shouldn't update the timestamp
+    with patch("time.time", return_value=100.5):
+        module.tick(ctx)
+
+    assert ctx.data["service_watchdog_status"]["timestamp"] == 100.0
+
+    # Tick again after the interval, should update
+    with patch("time.time", return_value=101.5):
+        module.tick(ctx)
+
+    assert ctx.data["service_watchdog_status"]["timestamp"] == 101.5
+
+def test_tick_restart_on_error():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    ctx = DummyContext({
         "settings": {
             "service_watchdog": {
                 "enabled": True,
-                "monitor_modules": ["test_module"],
                 "restart_on_error": True,
                 "restart_on_stale": False,
-                "restart_cooldown_s": 5.0,
-                "max_restarts": 3
+                "cooldown": 0.0
             }
         },
+        "module_names": ["failing_module"],
         "module_statuses": {
-            "test_module": {
+            "failing_module": {
                 "enabled": True,
-                "last_error": "crash!"
+                "last_error": "Some error"
             }
         }
     })
-    module = ServiceWatchdogModule("watchdog")
-    module.tick(context)
 
-    assert "restart_modules" in context._set_calls
-    assert "test_module" in context._set_calls["restart_modules"]
-    restarts = context._set_calls["service_watchdog_restarts"]
-    assert restarts["reasons"]["test_module"] == "error"
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
 
-    # Test cooldown
-    context._set_calls.clear()
-    mock_time.return_value = 1002.0 # Less than cooldown 5.0
-    # Provide new error to bypass last_error check
-    context._data["module_statuses"]["test_module"]["last_error"] = "crash 2!"
-    module.tick(context)
-    assert "restart_modules" not in context._set_calls
+    assert "restart_modules" in ctx.data
+    assert ctx.data["restart_modules"] == ["failing_module"]
+    assert ctx.data["service_watchdog_restarts"]["reasons"]["failing_module"] == "error"
+    assert module._last_error_seen["failing_module"] == "Some error"
+    assert module._restart_counts["failing_module"] == 1
 
-@patch("time.time")
-def test_restart_on_stale(mock_time):
-    mock_time.return_value = 1000.0
-    context = DummyContext({
-        "config.safety.service_watchdog": {
-            "enabled": True,
-            "monitor_modules": ["test_module"],
-            "restart_on_error": False,
-            "restart_on_stale": True,
-            "module_timeout_s": 6.0,
-            "restart_cooldown_s": 5.0,
-            "max_restarts": 3
-        },
+def test_tick_no_restart_same_error():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    module._last_error_seen["failing_module"] = "Some error"
+
+    ctx = DummyContext({
         "settings": {
             "service_watchdog": {
                 "enabled": True,
-                "monitor_modules": ["test_module"],
+                "restart_on_error": True,
+                "restart_on_stale": False,
+                "cooldown": 0.0
+            }
+        },
+        "module_names": ["failing_module"],
+        "module_statuses": {
+            "failing_module": {
+                "enabled": True,
+                "last_error": "Some error"
+            }
+        }
+    })
+
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
+
+    assert "restart_modules" not in ctx.data
+
+def test_tick_restart_on_stale():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    ctx = DummyContext({
+        "settings": {
+            "service_watchdog": {
+                "enabled": True,
                 "restart_on_error": False,
                 "restart_on_stale": True,
-                "module_timeout_s": 6.0,
-                "restart_cooldown_s": 5.0,
+                "module_timeout_s": 5.0,
+                "cooldown": 0.0
+            }
+        },
+        "module_names": ["stale_module"],
+        "module_statuses": {
+            "stale_module": {
+                "enabled": True,
+                "last_heartbeat_ts": 90.0
+            }
+        }
+    })
+
+    # 100.0 - 90.0 = 10.0 > 5.0 (module_timeout_s)
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
+
+    assert "restart_modules" in ctx.data
+    assert ctx.data["restart_modules"] == ["stale_module"]
+    assert ctx.data["service_watchdog_restarts"]["reasons"]["stale_module"] == "stale"
+    assert module._restart_counts["stale_module"] == 1
+
+def test_tick_restart_cooldown():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    ctx = DummyContext({
+        "settings": {
+            "service_watchdog": {
+                "enabled": True,
+                "restart_on_error": True,
+                "restart_on_stale": False,
+                "restart_cooldown_s": 5.0
+            }
+        },
+        "module_names": ["failing_module"],
+        "module_statuses": {
+            "failing_module": {
+                "enabled": True,
+                "last_error": "Error 1"
+            }
+        }
+    })
+
+    # First tick requests restart
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
+
+    assert ctx.data.get("restart_modules") == ["failing_module"]
+    assert module._restart_counts["failing_module"] == 1
+
+    # Clear data for next tick
+    del ctx.data["restart_modules"]
+
+    # Simulate new error but within cooldown (100.0 + 3.0 < 100.0 + 5.0)
+    ctx.data["module_statuses"]["failing_module"]["last_error"] = "Error 2"
+    with patch("time.time", return_value=103.0):
+        module.tick(ctx)
+
+    assert "restart_modules" not in ctx.data
+    assert module._restart_counts["failing_module"] == 1
+
+    # Simulate new error after cooldown (100.0 + 6.0 > 100.0 + 5.0)
+    ctx.data["module_statuses"]["failing_module"]["last_error"] = "Error 3"
+    with patch("time.time", return_value=106.0):
+        module.tick(ctx)
+
+    assert ctx.data.get("restart_modules") == ["failing_module"]
+    assert module._restart_counts["failing_module"] == 2
+
+def test_tick_max_restarts():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    module._restart_counts["failing_module"] = 3
+
+    ctx = DummyContext({
+        "settings": {
+            "service_watchdog": {
+                "enabled": True,
+                "restart_on_error": True,
+                "restart_on_stale": False,
+                "restart_cooldown_s": 0.0,
                 "max_restarts": 3
             }
         },
+        "module_names": ["failing_module"],
         "module_statuses": {
-            "test_module": {
+            "failing_module": {
                 "enabled": True,
-                "last_heartbeat_ts": 993.0 # 1000 - 993 = 7 > 6 timeout
+                "last_error": "New Error"
             }
         }
     })
-    module = ServiceWatchdogModule("watchdog")
-    module.tick(context)
 
-    assert "restart_modules" in context._set_calls
-    assert "test_module" in context._set_calls["restart_modules"]
-    restarts = context._set_calls["service_watchdog_restarts"]
-    assert restarts["reasons"]["test_module"] == "stale"
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
 
-@patch("time.time")
-def test_eligible_restart_max_restarts(mock_time):
-    mock_time.return_value = 1000.0
-    context = DummyContext({
-        "config.safety.service_watchdog": {
-            "enabled": True,
-            "monitor_modules": ["test_module"],
-            "restart_on_error": True,
-            "restart_on_stale": False,
-            "restart_cooldown_s": 0.0, # no cooldown
-            "max_restarts": 2
-        },
+    assert "restart_modules" not in ctx.data
+    assert module._restart_counts["failing_module"] == 3
+
+def test_tick_ignore_modules():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    ctx = DummyContext({
         "settings": {
             "service_watchdog": {
                 "enabled": True,
-                "monitor_modules": ["test_module"],
                 "restart_on_error": True,
-                "restart_on_stale": False,
-                "restart_cooldown_s": 0.0, # no cooldown
-                "max_restarts": 2
+                "ignore_modules": ["ignored_module"]
             }
         },
+        "module_names": ["failing_module", "ignored_module"],
         "module_statuses": {
-            "test_module": {
+            "failing_module": {
                 "enabled": True,
-                "last_error": "error 1"
-            }
-        }
-    })
-    module = ServiceWatchdogModule("watchdog")
-
-    # 1st restart
-    module.tick(context)
-    assert "restart_modules" in context._set_calls
-    context._set_calls.clear()
-
-    # 2nd restart
-    context._data["module_statuses"]["test_module"]["last_error"] = "error 2"
-    module.tick(context)
-    assert "restart_modules" in context._set_calls
-    context._set_calls.clear()
-
-    # 3rd restart (should fail due to max_restarts)
-    context._data["module_statuses"]["test_module"]["last_error"] = "error 3"
-    module.tick(context)
-    assert "restart_modules" not in context._set_calls
-
-def test_missing_or_disabled_status():
-    context = DummyContext({
-        "config.safety.service_watchdog": {
-            "enabled": True,
-            "monitor_modules": ["mod_missing", "mod_disabled", "mod_ok"],
-            "restart_on_error": True,
-            "max_restarts": 1
-        },
-        "settings": {
-            "service_watchdog": {
-                "enabled": True,
-                "monitor_modules": ["mod_missing", "mod_disabled", "mod_ok"],
-                "restart_on_error": True,
-                "max_restarts": 1
-            }
-        },
-        "module_statuses": {
-            "mod_disabled": {
-                "enabled": False,
-                "last_error": "err"
+                "last_error": "Error 1"
             },
-            "mod_ok": {
+            "ignored_module": {
                 "enabled": True,
-                "last_error": "err"
+                "last_error": "Error 2"
             }
-            # mod_missing has no status
         }
     })
-    module = ServiceWatchdogModule("watchdog")
-    module.tick(context)
 
-    assert "restart_modules" in context._set_calls
-    assert "mod_ok" in context._set_calls["restart_modules"]
-    assert "mod_missing" not in context._set_calls["restart_modules"]
-    assert "mod_disabled" not in context._set_calls["restart_modules"]
+    with patch("time.time", return_value=100.0):
+        module.tick(ctx)
 
-def test_reset():
-    module = ServiceWatchdogModule("watchdog")
-    module._last_restart_ts["mod_a"] = 100.0
-    module._restart_counts["mod_a"] = 2
-    module._last_error_seen["mod_a"] = "err"
+    assert "restart_modules" in ctx.data
+    assert ctx.data["restart_modules"] == ["failing_module"]
+    assert "ignored_module" not in module._restart_counts
 
-    module._last_restart_ts["mod_b"] = 200.0
-    module._restart_counts["mod_b"] = 1
-    module._last_error_seen["mod_b"] = "err_b"
+def test_reset_method():
+    module = ServiceWatchdogModule("watchdog", enabled=True)
+    module._last_restart_ts["module_a"] = 100.0
+    module._restart_counts["module_a"] = 2
+    module._last_error_seen["module_a"] = "err"
+
+    module._last_restart_ts["module_b"] = 100.0
+    module._restart_counts["module_b"] = 1
+    module._last_error_seen["module_b"] = "err"
 
     # Reset specific module
-    module.reset(["mod_a"])
-    assert "mod_a" not in module._last_restart_ts
-    assert "mod_b" in module._last_restart_ts
+    module.reset(["module_a"])
+    assert "module_a" not in module._last_restart_ts
+    assert "module_a" not in module._restart_counts
+    assert "module_a" not in module._last_error_seen
 
-    # Reset all
+    assert "module_b" in module._last_restart_ts
+
+    # Reset all modules
     module.reset()
     assert not module._last_restart_ts
     assert not module._restart_counts
