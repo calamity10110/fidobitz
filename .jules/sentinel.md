@@ -1,0 +1,4 @@
+## 2025-02-18 - [Path Traversal in Support Bundle Creation]
+**Vulnerability:** A Path Traversal vulnerability in `TelemetryDashboardModule.create_support_bundle_for_trace` allowed an attacker to specify a malicious `trace_id` containing directory traversal characters (e.g., `../../../../tmp/evil`), which would write a ZIP file to an arbitrary location on the filesystem.
+**Learning:** The vulnerability existed because the `trace_id` string from an HTTP request was directly interpolated into a file path without sanitization: `Path(tempfile.mkdtemp()) / f"support_bundle_{trace_id}.zip"`.
+**Prevention:** Always sanitize user-provided input before using it to construct file paths. Specifically, extract only the filename component (e.g., using `Path(trace_id).name` or `os.path.basename`) to strip any path directory traversal attempts.
