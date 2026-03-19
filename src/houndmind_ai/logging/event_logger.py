@@ -99,13 +99,23 @@ class EventLoggerModule(Module):
 
     def _generate_report(self) -> dict[str, Any]:
         total = len(self._events)
-        stuck_events = sum(1 for e in self._events if e.get("stuck_recovery"))
-        safety_events = sum(1 for e in self._events if e.get("safety_action"))
-        watchdog_events = sum(1 for e in self._events if e.get("watchdog_action"))
+        stuck_events = 0
+        safety_events = 0
+        watchdog_events = 0
+        mapping_hint_events = 0
+
+        for e in self._events:
+            if e.get("stuck_recovery"):
+                stuck_events += 1
+            if e.get("safety_action"):
+                safety_events += 1
+            if e.get("watchdog_action"):
+                watchdog_events += 1
+            if e.get("mapping_hint"):
+                mapping_hint_events += 1
+
         # Aggregate navigation actions for quick tuning insight.
         nav_action_counts = self._count_actions("navigation_action")
-        # Count mapping hint usage (only when present).
-        mapping_hint_events = sum(1 for e in self._events if e.get("mapping_hint"))
         return {
             "schema_version": SCHEMA_VERSION,
             "timestamp": time.time(),
