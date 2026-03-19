@@ -107,19 +107,49 @@ def test_generate_report():
     assert "timestamp" in report
 
 
-def test_write_jsonl_success():
+def test_write_jsonl_success_relative_path(tmp_path):
     logger = EventLoggerModule("test_logger")
     event = {"key": "value"}
-    settings = {"event_log_path": "test.jsonl"}
 
-    m_open = mock_open()
-    with patch("pathlib.Path.open", m_open), \
-         patch("pathlib.Path.mkdir") as m_mkdir:
+    # Use tmp_path as the base so we don't write to the actual repository
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+
+    mock_file = tmp_path / "src" / "houndmind_ai" / "logging" / "event_logger.py"
+    mock_file.parent.mkdir(parents=True, exist_ok=True)
+    mock_file.touch()
+
+    import houndmind_ai.logging.event_logger as event_logger_module
+
+    with patch.object(event_logger_module, "__file__", str(mock_file)):
+        settings = {"event_log_path": "logs/test.jsonl"}
+
         logger._write_jsonl(event, settings)
 
-        m_mkdir.assert_called()
-        m_open.assert_called_once_with("a", encoding="utf-8")
-        m_open().write.assert_called_once_with(json.dumps(event) + "\n")
+        expected_file = tmp_path / "logs" / "test.jsonl"
+        assert expected_file.exists()
+
+        with open(expected_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            assert len(lines) == 1
+            assert json.loads(lines[0]) == event
+
+
+def test_write_jsonl_success_absolute_path(tmp_path):
+    logger = EventLoggerModule("test_logger")
+    event = {"key": "value"}
+
+    # Use an absolute path inside tmp_path
+    abs_path = tmp_path / "var" / "log" / "houndmind_events.jsonl"
+    settings = {"event_log_path": str(abs_path)}
+
+    logger._write_jsonl(event, settings)
+
+    assert abs_path.exists()
+    with open(abs_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        assert len(lines) == 1
+        assert json.loads(lines[0]) == event
 
 
 def test_write_jsonl_failure():
@@ -127,13 +157,15 @@ def test_write_jsonl_failure():
     event = {"key": "value"}
     settings = {"event_log_path": "test.jsonl"}
 
-    with patch("pathlib.Path.open", side_effect=OSError("Disk full")), \
+    with patch("pathlib.Path.is_absolute", return_value=True), \
+         patch("pathlib.Path.open", side_effect=OSError("Disk full")), \
          patch("pathlib.Path.mkdir"), \
          patch("houndmind_ai.logging.event_logger.logger.warning") as m_warning:
         # Should not raise exception
         logger._write_jsonl(event, settings)
         m_warning.assert_called_once()
         assert "Failed to write event log" in m_warning.call_args[0][0]
+
 
 
 def test_tick_disabled():
