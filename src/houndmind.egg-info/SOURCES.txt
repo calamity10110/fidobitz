@@ -89,6 +89,7 @@ tests/test_logging_required_fields.py
 tests/test_logging_setup.py
 tests/test_mapping.py
 tests/test_mapping_grid_toggle.py
+tests/test_orientation_module.py
 tests/test_path_planning.py
 tests/test_personality_bias.py
 tests/test_runtime.py
