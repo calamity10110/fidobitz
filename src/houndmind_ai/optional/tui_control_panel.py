@@ -138,28 +138,28 @@ class TUIControlPanelModule(Module):
 
                 tick_hz = perf.get("tick_hz_actual")
                 tick_str = f"{tick_hz:.1f} Hz" if tick_hz else "N/A"
-                stdscr.addstr(5, 4, f"Tick Rate : ")
+                stdscr.addstr(5, 4, "Tick Rate : ")
                 stdscr.attron(curses.color_pair(2))
                 stdscr.addstr(tick_str)
                 stdscr.attroff(curses.color_pair(2))
 
                 v_fps = perf.get("vision_fps")
                 fps_str = f"{v_fps:.1f} FPS" if v_fps else "N/A"
-                stdscr.addstr(6, 4, f"Vision FPS: ")
+                stdscr.addstr(6, 4, "Vision FPS: ")
                 stdscr.attron(curses.color_pair(2))
                 stdscr.addstr(fps_str)
                 stdscr.attroff(curses.color_pair(2))
 
                 mem = perf.get("mem_used_pct")
                 mem_str = f"{mem:.1f}%" if mem else "N/A"
-                stdscr.addstr(7, 4, f"Memory    : ")
+                stdscr.addstr(7, 4, "Memory    : ")
                 stdscr.attron(curses.color_pair(3) if mem and mem > 80 else curses.color_pair(2))
                 stdscr.addstr(mem_str)
                 stdscr.attroff(curses.color_pair(3) if mem and mem > 80 else curses.color_pair(2))
 
                 cpu = perf.get("cpu_temp_c")
                 cpu_str = f"{cpu:.1f}C" if cpu else "N/A"
-                stdscr.addstr(8, 4, f"CPU Temp  : ")
+                stdscr.addstr(8, 4, "CPU Temp  : ")
                 stdscr.attron(curses.color_pair(4) if cpu and cpu > 75 else curses.color_pair(2))
                 stdscr.addstr(cpu_str)
                 stdscr.attroff(curses.color_pair(4) if cpu and cpu > 75 else curses.color_pair(2))

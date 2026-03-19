@@ -186,7 +186,7 @@ class ObstacleAvoidanceModule(Module):
                             self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
                         self._approach_votes.append(bool(approaching))
                         approach_confirmed = (
-                            sum(1 for v in self._approach_votes if v)
+                            self._approach_votes.count(True)
                             >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
                         )
 
@@ -367,7 +367,7 @@ class ObstacleAvoidanceModule(Module):
             self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
         self._approach_votes.append(bool(approaching))
         approach_confirmed = (
-            sum(1 for v in self._approach_votes if v)
+            self._approach_votes.count(True)
             >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
         )
 
@@ -518,7 +518,7 @@ class ObstacleAvoidanceModule(Module):
         if not angles:
             return None
 
-        valid_points = sum(1 for _, dist in distances.items() if dist > 0)
+        valid_points = sum(1 for dist in distances.values() if dist > 0)
         if valid_points < min_valid_points:
             return None
         if valid_points / max(1, len(distances)) < min_valid_ratio:
@@ -738,7 +738,7 @@ class ObstacleAvoidanceModule(Module):
         if repeat <= 0:
             return direction
         recent = [d for ts, d in self._no_go_history if now - ts <= window_s]
-        count = sum(1 for d in recent if d == direction)
+        count = recent.count(direction)
         if count >= repeat:
             if direction == "left":
                 return "right"
@@ -767,9 +767,10 @@ class ObstacleAvoidanceModule(Module):
             self._movement_history.popleft()
         if len(self._movement_history) < min_samples:
             return False
-        avg = sum(val for _, val in self._movement_history) / len(
-            self._movement_history
-        )
+        total = 0.0
+        for _, val in self._movement_history:
+            total += val
+        avg = total / len(self._movement_history)
         if avg >= threshold:
             return False
         if now - self._last_stuck_ts < cooldown:
