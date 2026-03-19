@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -167,9 +168,13 @@ class TelemetryDashboardModule(Module):
         # sensitive data (support bundle, map downloads). If set, requests
         # must include this token in `X-Auth-Token` header or `auth_token` query.
         self._auth_token = http_settings.get("auth_token")
+        if not self._auth_token:
+            self._auth_token = secrets.token_urlsafe(32)
+            logger.debug("No auth_token configured for telemetry dashboard; generated a secure session token: %s", self._auth_token)
+            print(f"Telemetry dashboard generated session token: {self._auth_token}")
 
         if host == "0.0.0.0":
-            logger.warning("Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or enable auth_token in config")
+            logger.warning("Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
 
         module = self
 
@@ -183,31 +188,37 @@ class TelemetryDashboardModule(Module):
                 self.wfile.write(data)
 
             def do_GET(self):
-                # Simple auth check: allow if no token configured; otherwise
-                # require header `X-Auth-Token` or query `auth_token`.
+                parsed = urlparse(self.path)
+                path = parsed.path
+                params = parse_qs(parsed.query)
+
+                # Simple auth check: require header `X-Auth-Token` or query `auth_token`.
                 def _auth_ok():
                     token = getattr(module, "_auth_token", None)
                     if not token:
-                        return True
+                        return False
                     # check header first
                     hdr = self.headers.get("X-Auth-Token")
                     if hdr == token:
                         return True
                     # then query param
-                    parsed = urlparse(self.path)
-                    params = parse_qs(parsed.query)
                     q = params.get("auth_token", [None])[0]
                     if q == token:
                         return True
                     return False
 
-                if self.path.startswith("/snapshot"):
-                    if not _auth_ok():
-                        self._send_json({"error": "unauthorized"}, status=401)
-                        return
+                # Public endpoint
+                if path == "/status":
+                    self._send_json({"status": "ok"})
+                    return
+
+                # All other endpoints require authentication
+                if not _auth_ok():
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
+
+                if path == "/snapshot":
                     # Allow filtering by trace id via header or query parameter
-                    parsed = urlparse(self.path)
-                    params = parse_qs(parsed.query)
                     header_trace = self.headers.get("X-Trace-Id")
                     query_trace = params.get("trace_id", [None])[0]
                     req_trace = header_trace or query_trace
@@ -220,10 +231,8 @@ class TelemetryDashboardModule(Module):
                         return
                     self._send_json(module._snapshot)
                     return
-                if self.path == "/download_slam_map":
-                    if not _auth_ok():
-                        self._send_json({"error": "unauthorized"}, status=401)
-                        return
+
+                if path == "/download_slam_map":
                     data = module._snapshot.get("slam_map_data")
                     if data is None:
                         self._send_json({"error": "no map data"}, status=404)
@@ -236,13 +245,9 @@ class TelemetryDashboardModule(Module):
                     self.end_headers()
                     self.wfile.write(payload)
                     return
-                if self.path.startswith("/download_support_bundle"):
-                    if not _auth_ok():
-                        self._send_json({"error": "unauthorized"}, status=401)
-                        return
+
+                if path == "/download_support_bundle":
                     # Accept trace_id via header or query
-                    parsed = urlparse(self.path)
-                    params = parse_qs(parsed.query)
                     header_trace = self.headers.get("X-Trace-Id")
                     query_trace = params.get("trace_id", [None])[0]
                     req_trace = header_trace or query_trace or module._snapshot.get("trace_id")
@@ -264,7 +269,8 @@ class TelemetryDashboardModule(Module):
                     except Exception as exc:  # noqa: BLE001
                         self._send_json({"error": str(exc)}, status=500)
                     return
-                if self.path == "/download_slam_trajectory":
+
+                if path == "/download_slam_trajectory":
                     data = module._snapshot.get("slam_trajectory")
                     if data is None:
                         self._send_json({"error": "no trajectory"}, status=404)
@@ -276,13 +282,13 @@ class TelemetryDashboardModule(Module):
                     self.end_headers()
                     self.wfile.write(payload)
                     return
-                if self.path == "/status":
-                    self._send_json({"status": "ok"})
-                    return
-                if self.path == "/":
+
+                if path == "/":
                     # Inject configured camera path into the dashboard HTML
                     html = _DASHBOARD_HTML.replace(
                         "{{CAMERA_PATH}}", str(getattr(module, "_camera_path", "/camera"))
+                    ).replace(
+                        "{{AUTH_TOKEN}}", str(getattr(module, "_auth_token", ""))
                     ).encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html")
@@ -726,21 +732,39 @@ _DASHBOARD_HTML = """
                     <pre id="slam" tabindex="0" aria-label="SLAM data output">No SLAM data available</pre>
                 </section>
             </div>
-        </main>
-    </div>
+        </div>
+        <script>
+            const camera = document.getElementById('camera');
+            const out = document.getElementById('output');
+            const quick = document.getElementById('quick');
+            const fpsLabel = document.getElementById('vision_fps');
+            const refresh = document.getElementById('refresh');
+            const authToken = "{{AUTH_TOKEN}}";
+            let last = 0;
 
-    <script>
-        // --- Theme Management System (ArchitectUX Standard) ---
-        class ThemeManager {
-            constructor() {
-                this.currentTheme = this.getStoredTheme() || 'system';
-                this.applyTheme(this.currentTheme);
-                this.initializeToggle();
+            function getAuthUrl(path) {
+                const url = new URL(path, window.location.origin);
+                if (authToken) url.searchParams.set('auth_token', authToken);
+                return url.toString();
+            }
 
-                // Listen for system theme changes
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                    if (this.currentTheme === 'system') {
-                        // The CSS handles the visual switch, but we might want to trigger events if needed
+            async function tick(){
+                try{
+                    const headers = authToken ? { 'X-Auth-Token': authToken } : {};
+                    const res = await fetch('/snapshot', { headers });
+                    const data = await res.json();
+                    out.textContent = JSON.stringify(data, null, 2);
+                    // expose trace id in header for quick copying
+                    const traceEl = document.getElementById('trace_id');
+                    traceEl.textContent = data.trace_id || '-';
+                    const perf = data.performance_telemetry || {};
+                    fpsLabel.textContent = perf.vision_fps ? perf.vision_fps.toFixed(1) : '-';
+                    quick.textContent = `tick ${perf.tick_hz_actual || '-'} • mem ${perf.mem_used_pct || '-'}%`;
+                    const slamEl = document.getElementById('slam');
+                    if(data.slam_map_data || data.slam_trajectory){
+                        slamEl.textContent = JSON.stringify({map: data.slam_map_data, trajectory: data.slam_trajectory}, null, 2);
+                    } else {
+                        slamEl.textContent = 'No SLAM data';
                     }
                 });
             }
@@ -886,10 +910,39 @@ _DASHBOARD_HTML = """
                     const err = await res.json().catch(()=>null);
                     alert('Failed to create bundle: ' + (err && err.error ? err.error : res.statusText));
                 } else {
+            // Avoid caching single-frame camera endpoints by adding a timestamp
+            function reloadCamera(){
+                const base = camera.getAttribute('src').split('?')[0];
+                const camUrl = new URL(base, window.location.origin);
+                camUrl.searchParams.set('ts', Date.now());
+                if (authToken && !base.startsWith('http')) {
+                    camUrl.searchParams.set('auth_token', authToken);
+                }
+                camera.src = camUrl.toString();
+            }
+            refresh.addEventListener('click', ()=>{ tick(); reloadCamera(); });
+            document.getElementById('copy_trace').addEventListener('click', ()=>{
+                const txt = document.getElementById('trace_id').textContent || '';
+                if(!txt || txt === '-') return; try{ navigator.clipboard.writeText(txt); alert('Trace id copied') }catch(e){ alert('Copy failed') }
+            });
+
+            document.getElementById('download_bundle').addEventListener('click', async ()=>{
+                const txt = document.getElementById('trace_id').textContent || '';
+                if(!txt || txt === '-') { alert('No trace id available'); return }
+                try{
+                    const bundleUrl = new URL('/download_support_bundle', window.location.origin);
+                    bundleUrl.searchParams.set('trace_id', txt);
+                    if (authToken) bundleUrl.searchParams.set('auth_token', authToken);
+                    const res = await fetch(bundleUrl.toString());
+                    if(!res.ok){
+                        const err = await res.json().catch(()=>null);
+                        alert('Failed to create bundle: ' + (err && err.error ? err.error : res.statusText));
+                        return
+                    }
                     const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
+                    const dlUrl = URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = url;
+                    a.href = dlUrl;
                     a.download = `support_bundle_${txt}.zip`;
                     a.click();
                     URL.revokeObjectURL(url);
@@ -927,5 +980,32 @@ _DASHBOARD_HTML = """
         tick();
     </script>
 </body>
+                    URL.revokeObjectURL(dlUrl);
+                }catch(e){ alert('Download failed: '+e) }
+            });
+            document.getElementById('download_map').addEventListener('click', async ()=>{
+                const res = await fetch(getAuthUrl('/download_slam_map'));
+                if(res.ok){
+                    const blob = await res.blob();
+                    const dlUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = dlUrl; a.download = 'slam_map.json'; a.click();
+                    URL.revokeObjectURL(dlUrl);
+                } else { alert('No map data') }
+            });
+            document.getElementById('download_traj').addEventListener('click', async ()=>{
+                const res = await fetch(getAuthUrl('/download_slam_trajectory'));
+                if(res.ok){
+                    const blob = await res.blob();
+                    const dlUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = dlUrl; a.download = 'slam_trajectory.json'; a.click();
+                    URL.revokeObjectURL(dlUrl);
+                } else { alert('No trajectory') }
+            });
+            setInterval(()=>{ tick(); reloadCamera(); }, 500);
+            tick();
+        </script>
+    </body>
 </html>
 """
