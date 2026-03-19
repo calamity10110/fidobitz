@@ -77,6 +77,7 @@ tests/test_behavior_habituation.py
 tests/test_config_max_cycles.py
 tests/test_config_validation.py
 tests/test_energy_state.py
+tests/test_event_logger.py
 tests/test_gentle_recovery.py
 tests/test_grid_bias.py
 tests/test_habituation.py
