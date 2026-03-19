@@ -3,12 +3,21 @@ from __future__ import annotations
 import logging
 import time
 from collections import Counter, deque
+from dataclasses import dataclass
 
 from typing import Any
 
 from houndmind_ai.core.module import Module
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DecisionData:
+    """Encapsulates a navigation decision to reduce parameter count."""
+    direction: str
+    score: float
+    confirmed: bool
 
 
 def _safe_float(val: Any, default: float) -> float:
@@ -118,7 +127,7 @@ class ObstacleAvoidanceModule(Module):
                     nav_action = "forward"
                     nav_led = "patrol"
                     self._clear_path_streak += 1
-                    emit_decision = ("forward", 0.0, True)
+                    emit_decision = DecisionData("forward", 0.0, True)
             else:
                 scan_result = self._scan_open_space(context, settings, now)
                 if scan_result is None:
@@ -244,7 +253,7 @@ class ObstacleAvoidanceModule(Module):
                                 nav_action = "forward"
                                 nav_led = "patrol"
                                 self._clear_path_streak += 1
-                            emit_decision = (direction, score, confirmed)
+                            emit_decision = DecisionData(direction, score, confirmed)
 
         # Set all context state at the end
         if nav_action is not None:
@@ -256,7 +265,7 @@ class ObstacleAvoidanceModule(Module):
         if nav_followup is not None:
             context.set("navigation_followup", nav_followup)
         if emit_decision is not None:
-            self._emit_navigation_decision(context, settings, *emit_decision)
+            self._emit_navigation_decision(context, settings, emit_decision)
         if stuck_recovery is not None:
             context.set("stuck_recovery", stuck_recovery)
 
@@ -295,7 +304,7 @@ class ObstacleAvoidanceModule(Module):
                 context.set("navigation_action", "forward")
                 self._set_nav_led(context, "patrol")
                 self._clear_path_streak += 1
-                self._emit_navigation_decision(context, settings, "forward", 0.0, True)
+                self._emit_navigation_decision(context, settings, DecisionData("forward", 0.0, True))
                 return
 
         scan_result = self._scan_open_space(context, settings, now)
@@ -438,7 +447,7 @@ class ObstacleAvoidanceModule(Module):
             self._set_nav_led(context, "patrol")
             self._clear_path_streak += 1
 
-        self._emit_navigation_decision(context, settings, direction, score, confirmed)
+        self._emit_navigation_decision(context, settings, DecisionData(direction, score, confirmed))
 
     def _scan_open_space(
         self, context, settings, now: float
@@ -544,16 +553,16 @@ class ObstacleAvoidanceModule(Module):
         return direction, score, confirmed
 
     def _emit_navigation_decision(
-        self, context, settings, direction: str, score: float, confirmed: bool
+        self, context, settings, decision_data: DecisionData
     ) -> None:
         if not settings.get("log_decision_enabled", True):
             return
         now = time.time()
         decision = {
             "timestamp": now,
-            "direction": direction,
-            "score": score,
-            "confirmed": confirmed,
+            "direction": decision_data.direction,
+            "score": decision_data.score,
+            "confirmed": decision_data.confirmed,
             "clear_path_streak": self._clear_path_streak,
             "low_confidence_retries": self._low_confidence_retries,
         }
