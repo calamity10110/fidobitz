@@ -18,11 +18,15 @@ class JsonFormatter(logging.Formatter):
         for k, v in record.__dict__.items():
             if k in ("name", "msg", "args", "levelname", "levelno", "pathname", "lineno", "exc_info", "exc_text", "stack_info", "created", "msecs", "relativeCreated", "thread", "threadName", "processName", "process"):
                 continue
-            try:
-                json.dumps(v)
+
+            if isinstance(v, (str, int, float, bool, type(None))):
                 payload[k] = v
-            except Exception:
-                payload[k] = repr(v)
+            else:
+                try:
+                    json.dumps(v)
+                    payload[k] = v
+                except Exception:
+                    payload[k] = repr(v)
 
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)

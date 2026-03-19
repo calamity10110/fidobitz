@@ -1,5 +1,17 @@
-import numpy as np
-import cv2
+import pytest
+import sys
+
+try:
+    import numpy as np
+    import cv2
+    # If it's a MagicMock from our test_main.py, we still want to skip it because we can't test real methods.
+    if isinstance(np, type(sys)): # It's a real module, usually Mocks aren't modules but MagicMock could act like one.
+        pass
+    if 'MagicMock' in str(type(np)):
+        pytest.skip("numpy is mocked, skipping", allow_module_level=True)
+except ImportError:
+    pytest.skip("numpy/cv2 not installed, skipping", allow_module_level=True)
+
 from houndmind_ai.optional.vision_preprocessing import VisionPreprocessor
 
 def test_resize():

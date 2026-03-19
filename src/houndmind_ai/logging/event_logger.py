@@ -23,7 +23,7 @@ class EventLoggerModule(Module):
         self._last_log_ts = 0.0
 
     def tick(self, context) -> None:
-        settings = (context.get("settings") or {}).get("logging", {})
+        settings = (context.get("settings") or {}).get("logging") or {}
         if not settings.get("event_log_enabled", True):
             return
 
@@ -70,7 +70,7 @@ class EventLoggerModule(Module):
         self._append_event(event, settings)
 
     def stop(self, context) -> None:
-        settings = (context.get("settings") or {}).get("logging", {})
+        settings = (context.get("settings") or {}).get("logging") or {}
         report = self._generate_report()
         context.set("event_log_report", report)
         if settings.get("event_log_file_enabled", True):
