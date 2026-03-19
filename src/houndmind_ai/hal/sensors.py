@@ -206,9 +206,17 @@ class SensorService:
                 time.sleep(delay)
         if not values:
             return None, False
-        if outlier_z > 0.0 and len(values) >= 3:
-            mean = sum(values) / len(values)
-            variance = sum((v - mean) ** 2 for v in values) / len(values)
+
+        n_vals = len(values)
+        if outlier_z > 0.0 and n_vals >= 3:
+            mean = sum(values) / n_vals
+
+            var_sum = 0.0
+            for v in values:
+                diff = v - mean
+                var_sum += diff * diff
+            variance = var_sum / n_vals
+
             std = variance**0.5
             if std > 0:
                 filtered = [v for v in values if abs(v - mean) <= outlier_z * std]
