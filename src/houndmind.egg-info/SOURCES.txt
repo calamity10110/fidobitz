@@ -77,6 +77,7 @@ tests/test_behavior_habituation.py
 tests/test_config_max_cycles.py
 tests/test_config_validation.py
 tests/test_energy_state.py
+tests/test_event_logger.py
 tests/test_gentle_recovery.py
 tests/test_grid_bias.py
 tests/test_habituation.py
@@ -88,6 +89,7 @@ tests/test_logging_required_fields.py
 tests/test_logging_setup.py
 tests/test_mapping.py
 tests/test_mapping_grid_toggle.py
+tests/test_orientation_module.py
 tests/test_path_planning.py
 tests/test_personality_bias.py
 tests/test_runtime.py
