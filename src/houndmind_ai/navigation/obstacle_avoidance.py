@@ -575,13 +575,8 @@ class ObstacleAvoidanceModule(Module):
         maxlen = self._dead_end_cache.maxlen
         if maxlen is None or len(self._dead_end_cache) < maxlen:
             return False
-        neg = 0
-        pos = 0
-        for v in self._dead_end_cache:
-            if v < 0:
-                neg += 1
-            elif v > 0:
-                pos += 1
+        neg = self._dead_end_cache.count(-1)
+        pos = self._dead_end_cache.count(1)
         if direction == "left" and neg > pos:
             return True
         if direction == "right" and pos > neg:
