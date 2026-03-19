@@ -238,3 +238,95 @@ def test_stop():
         assert report["stuck_events"] == 1
         m_write.assert_called_once()
         assert m_write.call_args[0][0]["type"] == "summary"
+
+def test_stop_no_file():
+    logger = EventLoggerModule("test_logger")
+    ctx = DummyContext()
+    ctx.set("settings", {"logging": {"event_log_file_enabled": False}})
+    logger._events = [{"stuck_recovery": True}]
+
+    with patch.object(logger, "_write_jsonl") as m_write:
+        logger.stop(ctx)
+        m_write.assert_not_called()
+
+def test_append_event_with_file():
+    logger = EventLoggerModule("test_logger")
+    settings = {"event_log_file_enabled": True}
+
+    with patch.object(logger, "_write_jsonl") as m_write:
+        logger._append_event({"n": 1}, settings)
+        m_write.assert_called_once_with({"n": 1}, settings)
+
+def test_write_jsonl_absolute_path():
+    logger = EventLoggerModule("test_logger")
+    event = {"key": "value"}
+    settings = {"event_log_path": "/tmp/absolute/test.jsonl"}
+
+    m_open = mock_open()
+    with patch("pathlib.Path.open", m_open), \
+         patch("pathlib.Path.mkdir") as m_mkdir, \
+         patch("pathlib.Path.is_absolute", return_value=True):
+
+        logger._write_jsonl(event, settings)
+
+        m_mkdir.assert_called()
+        m_open.assert_called_once_with("a", encoding="utf-8")
+        m_open().write.assert_called_once_with(json.dumps(event) + "\n")
+
+def test_tick_malformed_context():
+    logger = EventLoggerModule("test_logger")
+
+    # 1. Missing settings entirely
+    ctx1 = DummyContext()
+    with patch("time.time", return_value=100.0), patch.object(logger, "_append_event") as m_append:
+        logger.tick(ctx1)
+        # Should execute without errors and proceed to log snapshot
+        m_append.assert_called_once()
+
+    # 2. Settings is None
+    ctx2 = DummyContext()
+    ctx2.data["settings"] = None
+    # Change contexts to avoid duplicate snapshot check returning early
+    ctx2.data["behavior_action"] = "action_2"
+    with patch("time.time", return_value=200.0), patch.object(logger, "_append_event") as m_append:
+        logger.tick(ctx2)
+        m_append.assert_called_once()
+
+    # 3. Settings["logging"] is None
+    ctx3 = DummyContext()
+    ctx3.data["settings"] = {"logging": None}
+    ctx3.data["behavior_action"] = "action_3"
+    with patch("time.time", return_value=300.0), patch.object(logger, "_append_event") as m_append:
+        logger.tick(ctx3)
+        m_append.assert_called_once()
+
+    # 4. Settings["logging"]["event_log_interval_s"] is malformed
+    ctx4 = DummyContext()
+    ctx4.data["settings"] = {"logging": {"event_log_interval_s": "not a float"}}
+    with patch("time.time", return_value=400.0), patch.object(logger, "_append_event") as m_append:
+        with pytest.raises(ValueError):
+            logger.tick(ctx4)
+
+def test_stop_malformed_context():
+    logger = EventLoggerModule("test_logger")
+
+    # 1. Missing settings entirely
+    ctx1 = DummyContext()
+    with patch.object(logger, "_write_jsonl") as m_write:
+        logger.stop(ctx1)
+        # Since default event_log_file_enabled is True, it should try to write the summary
+        m_write.assert_called_once()
+
+    # 2. Settings is None
+    ctx2 = DummyContext()
+    ctx2.data["settings"] = None
+    with patch.object(logger, "_write_jsonl") as m_write:
+        logger.stop(ctx2)
+        m_write.assert_called_once()
+
+    # 3. Settings["logging"] is None
+    ctx3 = DummyContext()
+    ctx3.data["settings"] = {"logging": None}
+    with patch.object(logger, "_write_jsonl") as m_write:
+        logger.stop(ctx3)
+        m_write.assert_called_once()
