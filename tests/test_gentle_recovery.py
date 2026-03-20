@@ -1,5 +1,4 @@
 import time
-import pytest
 from houndmind_ai.navigation.obstacle_avoidance import ObstacleAvoidanceModule
 
 class DummyContext(dict):

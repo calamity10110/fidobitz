@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 from houndmind_ai.safety.service_watchdog import ServiceWatchdogModule
 

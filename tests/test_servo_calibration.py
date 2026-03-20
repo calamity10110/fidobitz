@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from houndmind_ai.calibration.servo_calibration import apply_servo_offsets, collect_servo_defaults
 

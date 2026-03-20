@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from pathlib import Path
 
 from houndmind_ai.core.logging_setup import setup_logging
