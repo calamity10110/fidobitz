@@ -26,8 +26,8 @@ for mod_name in _heavy_dependencies:
 if _mocked_modules:
     sys.modules.update(_mocked_modules)
 
-from houndmind_ai.main import main, build_modules
-from houndmind_ai.mapping import default_path_planning_hook
+from houndmind_ai.main import main, build_modules  # noqa: E402
+from houndmind_ai.mapping import default_path_planning_hook  # noqa: E402
 
 class TestMain(unittest.TestCase):
     @patch("houndmind_ai.main.build_modules")

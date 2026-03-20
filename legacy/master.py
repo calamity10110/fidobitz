@@ -19,13 +19,13 @@ Key Features:
 7-lynx
 """
 
-import time
-import threading
-import importlib
-import keyboard
-import traceback
-import random
-from . import global_state  # ✅ Integrated state tracking
+import time  # noqa: E402
+import threading  # noqa: E402
+import importlib  # noqa: E402
+import keyboard  # noqa: E402
+import traceback  # noqa: E402
+import random  # noqa: E402
+from . import global_state  # noqa: E402  # ✅ Integrated state tracking
 
 # ✅ Define Available Modules (Updated for new structure)
 module_names = {

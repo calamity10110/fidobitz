@@ -8,7 +8,7 @@ import threading
 here = path.abspath(path.dirname(__file__))
 os.chdir(here)
 sys.path.append("./robot_hat")
-from version import __version__
+from version import __version__  # noqa: E402
 
 print("Robot Hat Python Library v%s" % __version__)
 
@@ -83,7 +83,7 @@ def do(msg="", cmd=""):
     at_work_tip_sw = False
     _thread.join()  # wait for thread to finish
     # status
-    if status == 0 or status == None or result == "":
+    if status == 0 or status is None or result == "":
         print("Done")
     else:
         print("Error")
@@ -158,6 +158,14 @@ def install():
         if "--no-dep" not in options:
             # --------------------------------
             print("Install dependencies with apt-get:")
+
+            # get debian version
+            status, result = run_command("cat /etc/os-release | grep VERSION_ID | awk -F '=' '{print $2}' | sed 's/\"//g'")
+            try:
+                raspbian_version = int(result.strip())
+            except ValueError:
+                raspbian_version = 11
+
             # update apt-get
             do(msg="update apt-get", cmd="apt-get update")
             #
@@ -166,10 +174,10 @@ def install():
             #
             if "libttspico-utils" not in APT_INSTALL_LIST:
                 _pool = "http://ftp.debian.org/debian/pool/non-free/s/svox/"
-                if raspbain_version >= 12:
+                if raspbian_version >= 12:
                     libttspico = "libttspico0t64_1.0+git20130326-14.1_armhf.deb"
                     libttspico_utils = "libttspico-utils_1.0+git20130326-14.1_armhf.deb"
-                elif raspbain_version < 12:
+                elif raspbian_version < 12:
                     libttspico = "libttspico0_1.0+git20130326-11_armhf.deb"
                     libttspico_utils = "libttspico-utils_1.0+git20130326-11_armhf.deb"
                 do(

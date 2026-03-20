@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from distutils.log import warn
-import os, sys
+import os
+import sys
 import time
 import threading
 
@@ -13,7 +13,7 @@ import pwd
 owner_uid = os.stat(__file__).st_uid
 user_name = pwd.getpwuid(owner_uid).pw_name
 
-from version import __version__
+from version import __version__  # noqa: E402
 
 print("Start installing vilib %s for user %s" % (__version__, user_name))
 
@@ -98,7 +98,7 @@ def do(msg="", cmd=""):
     while _thread.is_alive():
         time.sleep(0.01)
     # status
-    if status == 0 or status == None or result == "":
+    if status == 0 or status is None or result == "":
         print("Done")
     else:
         print("\033[1;35mError\033[0m")
@@ -244,7 +244,7 @@ def install():
                 dep_name = dep
             do(msg=f"install {dep_name}", cmd=f"pip3 install {dep} {_is_bsps}")
         #
-        if is_mediapipe_supported == False:
+        if not is_mediapipe_supported:
             print(
                 "\033[38;5;8m  mediapipe is not supported on this platform... Skip \033[0m"
             )

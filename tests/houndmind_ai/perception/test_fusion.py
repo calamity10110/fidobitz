@@ -1,4 +1,3 @@
-import pytest
 from houndmind_ai.perception.fusion import PerceptionModule
 
 class DummySensorService:

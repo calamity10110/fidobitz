@@ -15,7 +15,7 @@ for path in (ROOT, SRC):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from houndmind_ai.mapping.mapper import MappingModule
+from houndmind_ai.mapping.mapper import MappingModule  # noqa: E402
 
 
 def main() -> None:
