@@ -1,4 +1,3 @@
-import pytest
 
 from houndmind_ai.core.config import _deep_merge
 

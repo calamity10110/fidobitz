@@ -2,7 +2,6 @@
 import time
 import threading
 import random
-import importlib
 
 try:
     # Prefer real actions if available

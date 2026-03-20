@@ -1,4 +1,3 @@
-import time
 from unittest.mock import patch
 
 from houndmind_ai.navigation.orientation import OrientationModule

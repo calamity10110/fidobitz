@@ -1,8 +1,6 @@
 import json
 import logging
 import os
-import shutil
-import tempfile
 
 from houndmind_ai.core.logging_setup import setup_logging
 

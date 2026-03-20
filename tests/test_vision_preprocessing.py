@@ -3,7 +3,7 @@ import sys
 
 try:
     import numpy as np
-    import cv2
+    import cv2  # noqa: F401
     # If it's a MagicMock from our test_main.py, we still want to skip it because we can't test real methods.
     if isinstance(np, type(sys)): # It's a real module, usually Mocks aren't modules but MagicMock could act like one.
         pass

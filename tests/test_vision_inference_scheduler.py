@@ -2,7 +2,6 @@
 Test for VisionInferenceScheduler
 """
 import time
-import pytest
 from houndmind_ai.optional.vision_inference_scheduler import VisionInferenceScheduler
 
 def dummy_inference(frame):
