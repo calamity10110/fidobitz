@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import secrets
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -11,6 +10,7 @@ from urllib.parse import urlparse, parse_qs
 from typing import Any
 
 from houndmind_ai.core.module import Module
+from houndmind_ai.core.auth import get_shared_auth_token
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _auth_ok(self, params: dict) -> bool:
+        import secrets
         token = getattr(self.module, "_auth_token", None)
         if not token:
             return False
@@ -187,7 +188,7 @@ class TelemetryDashboardModule(Module):
             return
         self.available = True
         settings = (context.get("settings") or {}).get("telemetry_dashboard", {})
-        self._maybe_start_http(settings)
+        self._maybe_start_http(context, settings)
         context.set("telemetry_status", {"status": "ready"})
 
     def get_snapshot_for_trace(self, trace_id: str) -> dict | None:
@@ -307,7 +308,7 @@ class TelemetryDashboardModule(Module):
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Failed to stop telemetry server: %s", exc)
 
-    def _maybe_start_http(self, settings: dict) -> None:
+    def _maybe_start_http(self, context, settings: dict) -> None:
         http_settings = settings.get("http", {})
         if not http_settings.get("enabled", False):
             return
@@ -320,11 +321,13 @@ class TelemetryDashboardModule(Module):
         # Optional simple token-based auth for endpoints that can expose
         # sensitive data (support bundle, map downloads). If set, requests
         # must include this token in `X-Auth-Token` header or `auth_token` query.
-        self._auth_token = http_settings.get("auth_token")
-        if not self._auth_token:
-            self._auth_token = secrets.token_urlsafe(32)
-            logger.debug("No auth_token configured for telemetry dashboard; generated a secure session token: %s", self._auth_token)
-            print(f"Telemetry dashboard generated session token: {self._auth_token}")
+        self._auth_token = get_shared_auth_token(context, http_settings)
+        if self._auth_token == context.get("shared_auth_token"):
+            logger.debug("No auth_token configured for telemetry dashboard; using generated shared session token.")
+            # Only print it if it's the first time
+            if context.get("shared_auth_token_printed") is not True:
+                print(f"Generated shared session token: {self._auth_token}")
+                context.set("shared_auth_token_printed", True)
 
         if host == "0.0.0.0":
             logger.warning("Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
