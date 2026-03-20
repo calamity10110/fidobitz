@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -187,8 +188,20 @@ class FaceRecognitionModule(Module):
         http_settings = settings.get("http", {})
         if not http_settings.get("enabled", False):
             return
-        host = http_settings.get("host", "0.0.0.0")
+        # Default to loopback for LAN-safe behavior.
+        host = http_settings.get("host", "127.0.0.1")
         port = int(http_settings.get("port", 8088))
+
+        # Optional simple token-based auth for endpoints that can expose
+        # sensitive data or trigger operations (enrolling faces).
+        self._auth_token = http_settings.get("auth_token")
+        if not self._auth_token:
+            self._auth_token = secrets.token_urlsafe(32)
+            logger.debug("No auth_token configured for face recognition; generated a secure session token: %s", self._auth_token)
+            print(f"Face recognition generated session token: {self._auth_token}")
+
+        if host == "0.0.0.0":
+            logger.warning("Face recognition HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
 
         module = self
 
@@ -201,17 +214,36 @@ class FaceRecognitionModule(Module):
                 self.end_headers()
                 self.wfile.write(data)
 
+            def _auth_ok(self, params: dict) -> bool:
+                token = getattr(module, "_auth_token", None)
+                if not token:
+                    return False
+                hdr = self.headers.get("X-Auth-Token")
+                if hdr == token:
+                    return True
+                q = params.get("auth_token", [None])[0]
+                if q == token:
+                    return True
+                return False
+
             def do_GET(self):
                 parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+
                 if parsed.path == "/status":
                     self._send_json({"status": "ok", "backend": module.backend})
                     return
+
+                # All other endpoints require authentication
+                if not self._auth_ok(params):
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
+
                 if parsed.path == "/faces":
                     self._send_json({"faces": module._latest_faces})
                     return
                 if parsed.path == "/enroll":
-                    qs = parse_qs(parsed.query)
-                    name = (qs.get("name") or [None])[0]
+                    name = (params.get("name") or [None])[0]
                     if not name:
                         self._send_json({"error": "Missing name"}, status=400)
                         return
@@ -222,6 +254,13 @@ class FaceRecognitionModule(Module):
 
             def do_POST(self):
                 parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+
+                # All POST endpoints require authentication
+                if not self._auth_ok(params):
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
+
                 length = int(self.headers.get("Content-Length", "0"))
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
                 if parsed.path == "/enroll":
