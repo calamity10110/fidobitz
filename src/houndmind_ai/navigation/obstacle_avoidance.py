@@ -851,26 +851,27 @@ class ObstacleAvoidanceModule(Module):
         step_deg = abs(angles[1] - angles[0]) if len(angles) > 1 else min_gap_deg
 
         while i < n:
-            if distances.get(angles[i], 0.0) >= min_score_cm:
-                j = i
-                total = 0.0
-                count = 0
-                while j < n and distances.get(angles[j], 0.0) >= min_score_cm:
-                    total += distances.get(angles[j], 0.0)
-                    count += 1
-                    j += 1
-                width_deg = count * step_deg
-                if width_deg >= min_gap_deg and count > 0:
-                    avg = total / count
-                    center_idx = i + (count // 2)
-                    center_angle = angles[center_idx]
-                    score = width_deg * avg
-                    if score > best_score:
-                        best_score = score
-                        best_angle = center_angle
-                i = j
-            else:
+            if distances.get(angles[i], 0.0) < min_score_cm:
                 i += 1
+                continue
+
+            j = i
+            total = 0.0
+            count = 0
+            while j < n and distances.get(angles[j], 0.0) >= min_score_cm:
+                total += distances.get(angles[j], 0.0)
+                count += 1
+                j += 1
+            width_deg = count * step_deg
+            if width_deg >= min_gap_deg and count > 0:
+                avg = total / count
+                center_idx = i + (count // 2)
+                center_angle = angles[center_idx]
+                score = width_deg * avg
+                if score > best_score:
+                    best_score = score
+                    best_angle = center_angle
+            i = j
 
         if best_score < 0:
             # Fallback to the maximum distance angle.
