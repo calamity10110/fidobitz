@@ -225,7 +225,7 @@ class MappingModule(Module):
 
         step_deg = float(settings.get("scan_step_deg", 0.0))
         if step_deg <= 0.0 and len(items) > 1:
-            diffs = [abs(items[i + 1][0] - items[i][0]) for i in range(len(items) - 1)]
+            diffs = [abs(next_item[0] - item[0]) for item, next_item in zip(items, items[1:])]
             diffs = [d for d in diffs if d > 0]
             if diffs:
                 diffs.sort()
