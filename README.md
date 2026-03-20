@@ -1,8 +1,8 @@
-# Fidobitz ( HoundMind fork - PiDog Unified AI)
+# Fidobitz ( fidobitz fork - PiDog Unified AI)
 
 Version: v2026.01.18 • Author: 7Lynx
 
-HoundMind is a unified AI control framework for the SunFounder PiDog. Simulation mode is no longer supported; all features require real PiDog hardware. PackMind and CanineCore are now a single system.
+fidobitz is a unified AI control framework for the SunFounder PiDog. Simulation mode is no longer supported; all features require real PiDog hardware. PackMind and CanineCore are now a single system.
 
 ## Current scope
 - Target hardware: **Raspberry Pi 3/4/5** (recommended: Raspberry Pi OS Lite, no desktop).
@@ -18,7 +18,7 @@ Run the automated installer on a Raspberry Pi:
 bash scripts/install_houndmind.sh
 ```
 
-This installs the SunFounder PiDog dependencies **and** HoundMind in the same environment. It auto-selects Pi3 lite or Pi4 full. For manual steps, see [docs/INSTALL.md](docs/INSTALL.md).
+This installs the SunFounder PiDog dependencies **and** fidobitz in the same environment. It auto-selects Pi3 lite or Pi4 full. For manual steps, see [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Before You Start (Pi OS Checklist)
 - Flash Raspberry Pi OS and complete first boot setup.
@@ -35,13 +35,13 @@ IMPORTANT: Bookworm is recommended because many heavy packages used by the full 
 The guided installer can:
 - Install vendor PiDog dependencies (robot-hat, vilib, pidog)
 - Set up audio (optional)
-- Install HoundMind dependencies
+- Install fidobitz dependencies
 - Verify imports and hardware access
 
 It is safe to re-run; it skips work that is already complete.
 
-## Start HoundMind
-- Recommended: run HoundMind inside the install virtualenv.
+## Start Fidobitz
+- Recommended: run fidobitz inside the install virtualenv.
 
 - Activate the venv, then run:
 
@@ -65,7 +65,7 @@ python -m houndmind_ai
 
 ### Developer installation (editable)
 
-For development you can install HoundMind in editable mode and select a dependency preset. Use the `lite` preset for a minimal developer environment, or the `full` preset to install optional vision/audio/SLAM packages (heavy, may require system build tools):
+For development you can install in editable mode and select a dependency preset. Use the `lite` preset for a minimal developer environment, or the `full` preset to install optional vision/audio/SLAM packages (heavy, may require system build tools):
 
 ```bash
 # Minimal (fast) development install
@@ -105,7 +105,7 @@ Pi4/5 modules (vision, face recognition, semantic labeling, SLAM, telemetry) rem
 
 
 ## SLAM (RTAB-Map for Pi4/5)
-For robust mapping and localization on Pi4/5, HoundMind supports RTAB-Map as the recommended SLAM backend. See [scripts/install_rtabmap_pi4.md](scripts/install_rtabmap_pi4.md) for installation steps and troubleshooting.
+For robust mapping and localization on Pi4/5, fidobitz supports RTAB-Map as the recommended SLAM backend. See [scripts/install_rtabmap_pi4.md](scripts/install_rtabmap_pi4.md) for installation steps and troubleshooting.
 
 ## Feature Guide
 See [docs/FEATURES_GUIDE.md](docs/FEATURES_GUIDE.md) for what each feature does, how to use it, and how to disable it.
@@ -153,7 +153,7 @@ See [docs/FEATURES_GUIDE.md](docs/FEATURES_GUIDE.md) for detailed enable/disable
 - Watchdogs are enabled by default but do not force actions or restarts unless configured.
 
 ## Troubleshooting (Quick)
-- **`ModuleNotFoundError: pidog`** → Install the official PiDog repo first, then HoundMind in the same environment.
+- **`ModuleNotFoundError: pidog`** → Install the official PiDog repo first, then fidobitz in the same environment.
 - **Camera not opening** → Enable camera in OS settings; try a different device index.
 - **Audio not working** → Ensure PortAudio headers are installed; rerun audio setup.
 - **Port in use** → Change HTTP ports in `config/settings.jsonc` for vision/telemetry/voice.
@@ -163,7 +163,7 @@ See [docs/FEATURES_GUIDE.md](docs/FEATURES_GUIDE.md) for detailed enable/disable
 - **`ERROR: Could not find a version that satisfies the requirement pidog`** → `pidog` is not on PyPI; the guided installer (`scripts/install_houndmind.sh`) will clone and install it from the SunFounder repo into the same environment. See `docs/INSTALL.md` for manual steps.
 
 ## Fallback (Original PiDog Software)
-If HoundMind breaks, you can still run the official PiDog scripts from the SunFounder repo. See [docs/INSTALL.md](docs/INSTALL.md) for fallback instructions.
+If fidobitz breaks, you can still run the official PiDog scripts from the SunFounder repo. See [docs/INSTALL.md](docs/INSTALL.md) for fallback instructions.
 
 
 
@@ -200,7 +200,7 @@ See [docs/FEATURES_GUIDE.md](docs/FEATURES_GUIDE.md) for details and enable/disa
 
 ## PiDog & Dependency Installation (Official)
 
-To use HoundMind with SunFounder PiDog hardware, install the following dependencies on your Raspberry Pi (Pi 4 recommended):
+To use fidobitz with SunFounder PiDog hardware, install the following dependencies on your Raspberry Pi (Pi 4 recommended):
 
 1. **Install system tools:**
    ```sh
@@ -264,7 +264,7 @@ Important: `pidog` is **not** available on PyPI, so it will never install via `p
 For more details, see the [official PiDog repo](https://github.com/sunfounder/pidog) and [official docs](https://docs.sunfounder.com/projects/pidog/en/latest/).
 
 ## Path Planning (A* for Pi4)
-HoundMind now supports grid-based path planning using the A* algorithm on Pi4. When enabled in `config/settings.jsonc`, the mapping module will plan a path from the current cell to a specified goal using the current map. The planned path is available in the runtime context for navigation and debugging.
+fidobitz now supports grid-based path planning using the A* algorithm on Pi4. When enabled in `config/settings.jsonc`, the mapping module will plan a path from the current cell to a specified goal using the current map. The planned path is available in the runtime context for navigation and debugging.
 
 - Enable with `"path_planning_enabled": true` in the mapping section of your config.
 - Set a goal with `"goal": [x, y]`.
