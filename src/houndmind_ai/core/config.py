@@ -231,22 +231,17 @@ def _to_float(value: Any | None) -> float | None:
         return None
 
 
-def validate_config(config: Config) -> list[str]:
+def _validate_loop(loop: LoopConfig) -> list[str]:
     warnings: list[str] = []
-    if config.loop.tick_hz <= 0:
+    if loop.tick_hz <= 0:
         warnings.append("loop.tick_hz should be > 0")
-    if config.loop.max_cycles is not None and config.loop.max_cycles <= 0:
+    if loop.max_cycles is not None and loop.max_cycles <= 0:
         warnings.append("loop.max_cycles should be > 0 when set")
-    settings = config.settings or {}
-    sensors = settings.get("sensors", {})
-    navigation = settings.get("navigation", {})
-    movement = settings.get("movement", {})
-    performance = settings.get("performance", {})
-    logging_settings = settings.get("logging", {})
-    safety = settings.get("safety", {})
-    attention = settings.get("attention", {})
-    balance = settings.get("balance", {})
+    return warnings
 
+
+def _validate_sensors(sensors: dict, performance: dict) -> list[str]:
+    warnings: list[str] = []
     min_cm = _to_float(sensors.get("distance_min_cm"))
     max_cm = _to_float(sensors.get("distance_max_cm"))
     if min_cm is not None and max_cm is not None and min_cm >= max_cm:
@@ -256,7 +251,11 @@ def validate_config(config: Config) -> list[str]:
     poll_hz_max = _to_float(performance.get("sensor_poll_hz_max"))
     if poll_hz is not None and poll_hz_max is not None and poll_hz > poll_hz_max:
         warnings.append("sensors.poll_hz exceeds performance.sensor_poll_hz_max")
+    return warnings
 
+
+def _validate_navigation(navigation: dict, performance: dict) -> list[str]:
+    warnings: list[str] = []
     scan_interval = _to_float(navigation.get("scan_interval_s"))
     scan_min = _to_float(navigation.get("scan_interval_min_s"))
     scan_max = _to_float(navigation.get("scan_interval_max_s"))
@@ -321,7 +320,11 @@ def validate_config(config: Config) -> list[str]:
     retry_limit = _to_float(navigation.get("scan_retry_limit"))
     if retry_limit is not None and retry_limit < 0:
         warnings.append("navigation.scan_retry_limit should be >= 0")
+    return warnings
 
+
+def _validate_movement(movement: dict) -> list[str]:
+    warnings: list[str] = []
     speed_normal = _to_float(movement.get("speed_normal"))
     speed_turn_normal = _to_float(movement.get("speed_turn_normal"))
     if speed_normal is not None and speed_normal < 0:
@@ -338,13 +341,21 @@ def validate_config(config: Config) -> list[str]:
         and speed_turn_normal <= speed_normal
     ):
         warnings.append("movement.speed_turn_normal should be faster than speed_normal")
+    return warnings
 
+
+def _validate_logging(logging_settings: dict) -> list[str]:
+    warnings: list[str] = []
     log_max_entries = _to_float(logging_settings.get("log_max_entries"))
     if log_max_entries is not None and log_max_entries > 5000:
         warnings.append(
             "logging.log_max_entries is large and may use significant memory"
         )
+    return warnings
 
+
+def _validate_safety(safety: dict) -> list[str]:
+    warnings: list[str] = []
     override_priority = safety.get("override_priority")
     if override_priority is not None and not isinstance(override_priority, list):
         warnings.append("safety.override_priority should be a list")
@@ -366,7 +377,11 @@ def validate_config(config: Config) -> list[str]:
     emergency_action = safety.get("emergency_stop_action")
     if emergency_action is not None and not isinstance(emergency_action, str):
         warnings.append("safety.emergency_stop_action should be a string action name")
+    return warnings
 
+
+def _validate_attention(attention: dict) -> list[str]:
+    warnings: list[str] = []
     head_yaw_max = _to_float(attention.get("head_yaw_max_deg"))
     if head_yaw_max is not None and not (0 < head_yaw_max <= 90):
         warnings.append("attention.head_yaw_max_deg should be in (0, 90]")
@@ -376,7 +391,11 @@ def validate_config(config: Config) -> list[str]:
     scan_block = _to_float(attention.get("scan_block_s"))
     if scan_block is not None and scan_block < 0:
         warnings.append("attention.scan_block_s should be >= 0")
+    return warnings
 
+
+def _validate_balance(balance: dict) -> list[str]:
+    warnings: list[str] = []
     balance_update_hz = _to_float(balance.get("update_hz"))
     if balance_update_hz is not None and balance_update_hz < 0:
         warnings.append("balance.update_hz should be >= 0")
@@ -392,5 +411,29 @@ def validate_config(config: Config) -> list[str]:
     balance_lpf = _to_float(balance.get("lpf_alpha"))
     if balance_lpf is not None and not (0 < balance_lpf <= 1.0):
         warnings.append("balance.lpf_alpha should be in (0, 1]")
+    return warnings
+
+
+def validate_config(config: Config) -> list[str]:
+    warnings: list[str] = []
+    warnings.extend(_validate_loop(config.loop))
+
+    settings = config.settings or {}
+    sensors = settings.get("sensors", {})
+    navigation = settings.get("navigation", {})
+    movement = settings.get("movement", {})
+    performance = settings.get("performance", {})
+    logging_settings = settings.get("logging", {})
+    safety = settings.get("safety", {})
+    attention = settings.get("attention", {})
+    balance = settings.get("balance", {})
+
+    warnings.extend(_validate_sensors(sensors, performance))
+    warnings.extend(_validate_navigation(navigation, performance))
+    warnings.extend(_validate_movement(movement))
+    warnings.extend(_validate_logging(logging_settings))
+    warnings.extend(_validate_safety(safety))
+    warnings.extend(_validate_attention(attention))
+    warnings.extend(_validate_balance(balance))
 
     return warnings

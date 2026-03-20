@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        payload = {
+        payload: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
@@ -18,11 +18,15 @@ class JsonFormatter(logging.Formatter):
         for k, v in record.__dict__.items():
             if k in ("name", "msg", "args", "levelname", "levelno", "pathname", "lineno", "exc_info", "exc_text", "stack_info", "created", "msecs", "relativeCreated", "thread", "threadName", "processName", "process"):
                 continue
-            try:
-                json.dumps(v)
+
+            if isinstance(v, (str, int, float, bool, type(None))):
                 payload[k] = v
-            except Exception:
-                payload[k] = repr(v)
+            else:
+                try:
+                    json.dumps(v)
+                    payload[k] = v
+                except Exception:
+                    payload[k] = repr(v)
 
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)

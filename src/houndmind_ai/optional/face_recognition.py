@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -50,90 +51,100 @@ class FaceRecognitionModule(Module):
         self.backend = backend
 
         if backend == "stub":
-            self.available = True
-            context.set(
-                "face_recognition_status", {"status": "ready", "backend": backend}
-            )
+            self._start_stub(context)
+        elif backend == "opencv":
+            self._start_opencv(context, settings)
+        elif backend == "face_recognition":
+            self._start_face_recognition(context, settings)
+        else:
+            self.disable(f"Unknown face recognition backend: {backend}")
+
+    def _start_stub(self, context) -> None:
+        self.available = True
+        context.set(
+            "face_recognition_status", {"status": "ready", "backend": self.backend}
+        )
+
+    def _start_opencv(self, context, settings: dict) -> None:
+        try:
+            import cv2  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            self.disable(f"OpenCV backend unavailable: {exc}")
             return
 
-        if backend == "opencv":
-            try:
-                import cv2  # type: ignore
-            except Exception as exc:  # noqa: BLE001
-                self.disable(f"OpenCV backend unavailable: {exc}")
-                return
-
-            self._cv2 = cv2
-            haar_path = settings.get("opencv_haar_path")
-            if not haar_path:
-                data_obj = getattr(self._cv2, "data", None)
-                if data_obj is not None and getattr(data_obj, "haaracascades", None) is None:
-                    # some cv2 distributions expose haarcascades under 'haaracascades' attribute
-                    pass
-                # best-effort default path when cv2 provides haarcascades
-                if data_obj is not None and getattr(data_obj, "haarcascades", None) is not None:
+        self._cv2 = cv2
+        haar_path = settings.get("opencv_haar_path")
+        if not haar_path:
+            data_obj = getattr(self._cv2, "data", None)
+            if data_obj is not None:
+                if getattr(data_obj, "haarcascades", None) is not None:
                     haar_path = str(Path(getattr(data_obj, "haarcascades")) / "haarcascade_frontalface_default.xml")
-                else:
-                    haar_path = ""
-            haar_path = self._resolve_path(haar_path)
-            if not haar_path.exists():
-                self.disable(f"Haar cascade not found: {haar_path}")
-                return
-            self._cascade = cv2.CascadeClassifier(str(haar_path))
+                # Removed the empty if check for 'haaracascades'
+            if not haar_path:
+                haar_path = ""
 
-            lbph_settings = settings.get("lbph", {})
-            if lbph_settings.get("enabled", True) and hasattr(cv2, "face"):
-                try:
-                    self._recognizer = cv2.face.LBPHFaceRecognizer_create()  # type: ignore[attr-defined]
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("LBPH unavailable: %s", exc)
-                    self._recognizer = None
-
-            if self._recognizer is not None:
-                model_path = self._resolve_path(
-                    lbph_settings.get("model_path", "data/face_model.yml")
-                )
-                dataset_dir = self._resolve_path(
-                    lbph_settings.get("dataset_dir", "data/face_dataset")
-                )
-                label_map_path = self._resolve_path(
-                    lbph_settings.get("label_map_path", "data/face_labels.json")
-                )
-                self._label_map = self._load_label_map(label_map_path)
-                if model_path.exists():
-                    try:
-                        self._recognizer.read(str(model_path))
-                    except Exception as exc:  # noqa: BLE001
-                        logger.warning("Failed to read LBPH model: %s", exc)
-                elif dataset_dir.exists():
-                    self._train_lbph(dataset_dir, model_path, label_map_path)
-
-            self.available = True
-            context.set(
-                "face_recognition_status", {"status": "ready", "backend": backend}
-            )
-            self._maybe_start_http(settings)
+        haar_path = self._resolve_path(haar_path)
+        if not haar_path.exists():
+            self.disable(f"Haar cascade not found: {haar_path}")
             return
 
-        if backend == "face_recognition":
+        self._cascade = cv2.CascadeClassifier(str(haar_path))
+        self._init_lbph(settings)
+
+        self.available = True
+        context.set(
+            "face_recognition_status", {"status": "ready", "backend": self.backend}
+        )
+        self._maybe_start_http(settings)
+
+    def _init_lbph(self, settings: dict) -> None:
+        lbph_settings = settings.get("lbph", {})
+        if not lbph_settings.get("enabled", True) or not hasattr(self._cv2, "face"):
+            return
+
+        try:
+            self._recognizer = self._cv2.face.LBPHFaceRecognizer_create()  # type: ignore[attr-defined]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("LBPH unavailable: %s", exc)
+            self._recognizer = None
+            return
+
+        model_path = self._resolve_path(
+            lbph_settings.get("model_path", "data/face_model.yml")
+        )
+        dataset_dir = self._resolve_path(
+            lbph_settings.get("dataset_dir", "data/face_dataset")
+        )
+        label_map_path = self._resolve_path(
+            lbph_settings.get("label_map_path", "data/face_labels.json")
+        )
+
+        self._label_map = self._load_label_map(label_map_path)
+        if model_path.exists():
             try:
-                import face_recognition  # type: ignore  # noqa: F401
+                self._recognizer.read(str(model_path))
             except Exception as exc:  # noqa: BLE001
-                self.disable(f"face_recognition backend unavailable: {exc}")
-                return
+                logger.warning("Failed to read LBPH model: %s", exc)
+        elif dataset_dir.exists():
+            self._train_lbph(dataset_dir, model_path, label_map_path)
 
-            self._embeddings_path = self._resolve_path(
-                settings.get("embeddings_path", "data/face_embeddings.json")
-            )
-            self._load_embeddings()
-            self.available = True
-            context.set(
-                "face_recognition_status", {"status": "ready", "backend": backend}
-            )
-            self._maybe_start_http(settings)
+    def _start_face_recognition(self, context, settings: dict) -> None:
+        try:
+            import face_recognition  # type: ignore  # noqa: F401
+        except Exception as exc:  # noqa: BLE001
+            self.disable(f"face_recognition backend unavailable: {exc}")
             return
 
-        self.disable(f"Unknown face recognition backend: {backend}")
+        self._embeddings_path = self._resolve_path(
+            settings.get("embeddings_path", "data/face_embeddings.json")
+        )
+        self._load_embeddings()
+
+        self.available = True
+        context.set(
+            "face_recognition_status", {"status": "ready", "backend": self.backend}
+        )
+        self._maybe_start_http(settings)
 
     def tick(self, context) -> None:
         if not self.available or not self.status.enabled:
@@ -187,8 +198,20 @@ class FaceRecognitionModule(Module):
         http_settings = settings.get("http", {})
         if not http_settings.get("enabled", False):
             return
-        host = http_settings.get("host", "0.0.0.0")
+        # Default to loopback for LAN-safe behavior.
+        host = http_settings.get("host", "127.0.0.1")
         port = int(http_settings.get("port", 8088))
+
+        # Optional simple token-based auth for endpoints that can expose
+        # sensitive data or trigger operations (enrolling faces).
+        self._auth_token = http_settings.get("auth_token")
+        if not self._auth_token:
+            self._auth_token = secrets.token_urlsafe(32)
+            logger.debug("No auth_token configured for face recognition; generated a secure session token: %s", self._auth_token)
+            print(f"Face recognition generated session token: {self._auth_token}")
+
+        if host == "0.0.0.0":
+            logger.warning("Face recognition HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
 
         module = self
 
@@ -201,17 +224,36 @@ class FaceRecognitionModule(Module):
                 self.end_headers()
                 self.wfile.write(data)
 
+            def _auth_ok(self, params: dict) -> bool:
+                token = getattr(module, "_auth_token", None)
+                if not token:
+                    return False
+                hdr = self.headers.get("X-Auth-Token")
+                if hdr == token:
+                    return True
+                q = params.get("auth_token", [None])[0]
+                if q == token:
+                    return True
+                return False
+
             def do_GET(self):
                 parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+
                 if parsed.path == "/status":
                     self._send_json({"status": "ok", "backend": module.backend})
                     return
+
+                # All other endpoints require authentication
+                if not self._auth_ok(params):
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
+
                 if parsed.path == "/faces":
                     self._send_json({"faces": module._latest_faces})
                     return
                 if parsed.path == "/enroll":
-                    qs = parse_qs(parsed.query)
-                    name = (qs.get("name") or [None])[0]
+                    name = (params.get("name") or [None])[0]
                     if not name:
                         self._send_json({"error": "Missing name"}, status=400)
                         return
@@ -222,6 +264,13 @@ class FaceRecognitionModule(Module):
 
             def do_POST(self):
                 parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+
+                # All POST endpoints require authentication
+                if not self._auth_ok(params):
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
+
                 length = int(self.headers.get("Content-Length", "0"))
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
                 if parsed.path == "/enroll":
@@ -251,6 +300,20 @@ class FaceRecognitionModule(Module):
         self._http_thread.start()
         logger.info("Face recognition HTTP server listening on %s:%s", host, port)
 
+    def _apply_lbph_recognition(self, entry: dict[str, Any], face_roi: Any, threshold: float) -> None:
+        """Applies LBPH face recognition to a detected face ROI."""
+        if self._recognizer is None:
+            return
+
+        try:
+            label_id, confidence = self._recognizer.predict(face_roi)
+            name = self._label_map.get(int(label_id), "unknown")
+            entry.update({"label": name, "confidence": float(confidence)})
+            if confidence > threshold:
+                entry["label"] = "unknown"
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("LBPH prediction failed for ROI with shape %s: %s", getattr(face_roi, 'shape', 'unknown'), exc, exc_info=True)
+
     def _detect_opencv(self, frame, settings: dict) -> list[dict[str, Any]]:
         if self._cv2 is None or self._cascade is None:
             return []
@@ -273,16 +336,8 @@ class FaceRecognitionModule(Module):
         threshold = float(lbph_settings.get("confidence_threshold", 70.0))
         for x, y, w, h in faces:
             entry: dict[str, Any] = {"bbox": [int(x), int(y), int(w), int(h)]}
-            if self._recognizer is not None:
-                face_roi = gray[y : y + h, x : x + w]
-                try:
-                    label_id, confidence = self._recognizer.predict(face_roi)
-                    name = self._label_map.get(int(label_id), "unknown")
-                    entry.update({"label": name, "confidence": float(confidence)})
-                    if confidence > threshold:
-                        entry["label"] = "unknown"
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("LBPH prediction failed: %s", exc)
+            face_roi = gray[y : y + h, x : x + w]
+            self._apply_lbph_recognition(entry, face_roi, threshold)
             results.append(entry)
         return results
 

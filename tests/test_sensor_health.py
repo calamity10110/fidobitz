@@ -1,4 +1,3 @@
-import pytest
 from houndmind_ai.safety.sensor_health import SensorHealthModule
 from houndmind_ai.hal.sensors import SensorService, SensorReading
 from houndmind_ai.logging.led_manager import LedManagerModule

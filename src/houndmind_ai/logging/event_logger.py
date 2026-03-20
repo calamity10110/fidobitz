@@ -23,7 +23,7 @@ class EventLoggerModule(Module):
         self._last_log_ts = 0.0
 
     def tick(self, context) -> None:
-        settings = (context.get("settings") or {}).get("logging", {})
+        settings = (context.get("settings") or {}).get("logging") or {}
         if not settings.get("event_log_enabled", True):
             return
 
@@ -70,7 +70,7 @@ class EventLoggerModule(Module):
         self._append_event(event, settings)
 
     def stop(self, context) -> None:
-        settings = (context.get("settings") or {}).get("logging", {})
+        settings = (context.get("settings") or {}).get("logging") or {}
         report = self._generate_report()
         context.set("event_log_report", report)
         if settings.get("event_log_file_enabled", True):
@@ -99,13 +99,26 @@ class EventLoggerModule(Module):
 
     def _generate_report(self) -> dict[str, Any]:
         total = len(self._events)
-        stuck_events = sum(1 for e in self._events if e.get("stuck_recovery"))
-        safety_events = sum(1 for e in self._events if e.get("safety_action"))
-        watchdog_events = sum(1 for e in self._events if e.get("watchdog_action"))
+
+        # ⚡ Bolt: Optimize 4 O(N) loops into a single pass to improve performance
+        # when generating reports over the event buffer (up to 1000 items).
+        stuck_events = 0
+        safety_events = 0
+        watchdog_events = 0
+        mapping_hint_events = 0
+
+        for e in self._events:
+            if e.get("stuck_recovery"):
+                stuck_events += 1
+            if e.get("safety_action"):
+                safety_events += 1
+            if e.get("watchdog_action"):
+                watchdog_events += 1
+            if e.get("mapping_hint"):
+                mapping_hint_events += 1
+
         # Aggregate navigation actions for quick tuning insight.
         nav_action_counts = self._count_actions("navigation_action")
-        # Count mapping hint usage (only when present).
-        mapping_hint_events = sum(1 for e in self._events if e.get("mapping_hint"))
         return {
             "schema_version": SCHEMA_VERSION,
             "timestamp": time.time(),

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import time
-import random
 import threading
 import speech_recognition as sr  # Speech recognition library
 from pidog import Pidog

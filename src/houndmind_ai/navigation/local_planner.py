@@ -50,30 +50,39 @@ class LocalPlannerModule(Module):
         now = time.time()
 
         plan = {"timestamp": now, "source": "mapping", "valid": False}
-        if isinstance(best_path, dict):
-            conf = _safe_float(best_path.get("confidence", best_path.get("score", 0.0)), 0.0)
-            min_conf = _safe_float(settings.get("planner_min_confidence", 0.6), 0.6)
-            max_age_s = _safe_float(settings.get("planner_max_age_s", 2.0), 2.0)
-            sample_ts = mapping.get("timestamp", now)
-            sample_ts_val = _safe_float(sample_ts, now)
-            age_ok = (now - sample_ts_val) <= max_age_s if max_age_s > 0 else True
-            if conf >= min_conf and age_ok:
-                yaw = best_path.get("yaw")
-                yaw = _safe_float(yaw, 0.0)
-                direction = "forward"
-                if yaw < 0:
-                    direction = "left"
-                elif yaw > 0:
-                    direction = "right"
-                plan.update(
-                    {
-                        "valid": True,
-                        "yaw": yaw,
-                        "direction": direction,
-                        "score": _safe_float(best_path.get("score", 0.0), 0.0),
-                        "confidence": conf,
-                    }
-                )
+
+        if not isinstance(best_path, dict):
+            context.set("local_plan", plan)
+            return
+
+        conf = _safe_float(best_path.get("confidence", best_path.get("score", 0.0)), 0.0)
+        min_conf = _safe_float(settings.get("planner_min_confidence", 0.6), 0.6)
+        max_age_s = _safe_float(settings.get("planner_max_age_s", 2.0), 2.0)
+        sample_ts = mapping.get("timestamp", now)
+        sample_ts_val = _safe_float(sample_ts, now)
+        age_ok = (now - sample_ts_val) <= max_age_s if max_age_s > 0 else True
+
+        if conf < min_conf or not age_ok:
+            context.set("local_plan", plan)
+            return
+
+        yaw = best_path.get("yaw")
+        yaw = _safe_float(yaw, 0.0)
+        direction = "forward"
+        if yaw < 0:
+            direction = "left"
+        elif yaw > 0:
+            direction = "right"
+
+        plan.update(
+            {
+                "valid": True,
+                "yaw": yaw,
+                "direction": direction,
+                "score": _safe_float(best_path.get("score", 0.0), 0.0),
+                "confidence": conf,
+            }
+        )
 
         context.set("local_plan", plan)
 

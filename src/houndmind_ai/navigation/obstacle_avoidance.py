@@ -3,12 +3,21 @@ from __future__ import annotations
 import logging
 import time
 from collections import Counter, deque
+from dataclasses import dataclass
 
 from typing import Any
 
 from houndmind_ai.core.module import Module
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DecisionData:
+    """Encapsulates a navigation decision to reduce parameter count."""
+    direction: str
+    score: float
+    confirmed: bool
 
 
 def _safe_float(val: Any, default: float) -> float:
@@ -118,7 +127,7 @@ class ObstacleAvoidanceModule(Module):
                     nav_action = "forward"
                     nav_led = "patrol"
                     self._clear_path_streak += 1
-                    emit_decision = ("forward", 0.0, True)
+                    emit_decision = DecisionData("forward", 0.0, True)
             else:
                 scan_result = self._scan_open_space(context, settings, now)
                 if scan_result is None:
@@ -177,7 +186,7 @@ class ObstacleAvoidanceModule(Module):
                             self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
                         self._approach_votes.append(bool(approaching))
                         approach_confirmed = (
-                            sum(1 for v in self._approach_votes if v)
+                            self._approach_votes.count(True)
                             >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
                         )
 
@@ -244,7 +253,7 @@ class ObstacleAvoidanceModule(Module):
                                 nav_action = "forward"
                                 nav_led = "patrol"
                                 self._clear_path_streak += 1
-                            emit_decision = (direction, score, confirmed)
+                            emit_decision = DecisionData(direction, score, confirmed)
 
         # Set all context state at the end
         if nav_action is not None:
@@ -256,7 +265,7 @@ class ObstacleAvoidanceModule(Module):
         if nav_followup is not None:
             context.set("navigation_followup", nav_followup)
         if emit_decision is not None:
-            self._emit_navigation_decision(context, settings, *emit_decision)
+            self._emit_navigation_decision(context, settings, emit_decision)
         if stuck_recovery is not None:
             context.set("stuck_recovery", stuck_recovery)
 
@@ -295,7 +304,7 @@ class ObstacleAvoidanceModule(Module):
                 context.set("navigation_action", "forward")
                 self._set_nav_led(context, "patrol")
                 self._clear_path_streak += 1
-                self._emit_navigation_decision(context, settings, "forward", 0.0, True)
+                self._emit_navigation_decision(context, settings, DecisionData("forward", 0.0, True))
                 return
 
         scan_result = self._scan_open_space(context, settings, now)
@@ -358,7 +367,7 @@ class ObstacleAvoidanceModule(Module):
             self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
         self._approach_votes.append(bool(approaching))
         approach_confirmed = (
-            sum(1 for v in self._approach_votes if v)
+            self._approach_votes.count(True)
             >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
         )
 
@@ -397,6 +406,7 @@ class ObstacleAvoidanceModule(Module):
             ):
                 self._gentle_recovery_active = True
                 self._gentle_recovery_until = now + gentle_recovery_cooldown
+                self._update_gentle_recovery_context(context, now)
             return
 
         direction = self._apply_no_go_bias(direction, now, settings)
@@ -438,7 +448,7 @@ class ObstacleAvoidanceModule(Module):
             self._set_nav_led(context, "patrol")
             self._clear_path_streak += 1
 
-        self._emit_navigation_decision(context, settings, direction, score, confirmed)
+        self._emit_navigation_decision(context, settings, DecisionData(direction, score, confirmed))
 
     def _scan_open_space(
         self, context, settings, now: float
@@ -509,7 +519,7 @@ class ObstacleAvoidanceModule(Module):
         if not angles:
             return None
 
-        valid_points = sum(1 for _, dist in distances.items() if dist > 0)
+        valid_points = sum(1 for dist in distances.values() if dist > 0)
         if valid_points < min_valid_points:
             return None
         if valid_points / max(1, len(distances)) < min_valid_ratio:
@@ -544,16 +554,16 @@ class ObstacleAvoidanceModule(Module):
         return direction, score, confirmed
 
     def _emit_navigation_decision(
-        self, context, settings, direction: str, score: float, confirmed: bool
+        self, context, settings, decision_data: DecisionData
     ) -> None:
         if not settings.get("log_decision_enabled", True):
             return
         now = time.time()
         decision = {
             "timestamp": now,
-            "direction": direction,
-            "score": score,
-            "confirmed": confirmed,
+            "direction": decision_data.direction,
+            "score": decision_data.score,
+            "confirmed": decision_data.confirmed,
             "clear_path_streak": self._clear_path_streak,
             "low_confidence_retries": self._low_confidence_retries,
         }
@@ -575,13 +585,8 @@ class ObstacleAvoidanceModule(Module):
         maxlen = self._dead_end_cache.maxlen
         if maxlen is None or len(self._dead_end_cache) < maxlen:
             return False
-        neg = 0
-        pos = 0
-        for v in self._dead_end_cache:
-            if v < 0:
-                neg += 1
-            elif v > 0:
-                pos += 1
+        neg = self._dead_end_cache.count(-1)
+        pos = self._dead_end_cache.count(1)
         if direction == "left" and neg > pos:
             return True
         if direction == "right" and pos > neg:
@@ -734,7 +739,7 @@ class ObstacleAvoidanceModule(Module):
         if repeat <= 0:
             return direction
         recent = [d for ts, d in self._no_go_history if now - ts <= window_s]
-        count = sum(1 for d in recent if d == direction)
+        count = recent.count(direction)
         if count >= repeat:
             if direction == "left":
                 return "right"
@@ -763,9 +768,10 @@ class ObstacleAvoidanceModule(Module):
             self._movement_history.popleft()
         if len(self._movement_history) < min_samples:
             return False
-        avg = sum(val for _, val in self._movement_history) / len(
-            self._movement_history
-        )
+        total = 0.0
+        for _, val in self._movement_history:
+            total += val
+        avg = total / len(self._movement_history)
         if avg >= threshold:
             return False
         if now - self._last_stuck_ts < cooldown:
@@ -862,6 +868,7 @@ class ObstacleAvoidanceModule(Module):
                 total += distances.get(angles[j], 0.0)
                 count += 1
                 j += 1
+
             width_deg = count * step_deg
             if width_deg >= min_gap_deg and count > 0:
                 avg = total / count
@@ -871,6 +878,7 @@ class ObstacleAvoidanceModule(Module):
                 if score > best_score:
                     best_score = score
                     best_angle = center_angle
+
             i = j
 
         if best_score < 0:
@@ -878,3 +886,18 @@ class ObstacleAvoidanceModule(Module):
             best_angle = max(angles, key=lambda a: distances.get(a, -1.0))
             best_score = distances.get(best_angle, 0.0)
         return best_angle, best_score
+
+    def _update_gentle_recovery_context(self, context, now: float) -> None:
+        if self._gentle_recovery_active or now < self._gentle_recovery_until:
+            if now >= self._gentle_recovery_until:
+                self._gentle_recovery_active = False
+                self._stuck_count = 0
+                context.set("gentle_recovery_active", False)
+                context.set("energy_speed_hint", None)
+            else:
+                context.set("gentle_recovery_active", True)
+                context.set("gentle_recovery_until", self._gentle_recovery_until)
+                context.set("energy_speed_hint", "slow")
+        else:
+            context.set("gentle_recovery_active", False)
+            context.set("energy_speed_hint", None)

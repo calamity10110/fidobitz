@@ -37,14 +37,16 @@ class CalibrationModule(Module):
             return
         self._last_request = request
 
-        if request == "servo_zero":
-            result = self._calibrate_servo_zero(context)
-        elif request == "wall_follow":
-            result = self._calibrate_wall_follow(context, settings)
-        elif request == "corner_seek":
-            result = self._calibrate_corner_seek(context, settings)
-        elif request == "landmark_align":
-            result = self._calibrate_landmark_align(context, settings)
+        dispatch = {
+            "servo_zero": lambda: self._calibrate_servo_zero(context),
+            "wall_follow": lambda: self._calibrate_wall_follow(context, settings),
+            "corner_seek": lambda: self._calibrate_corner_seek(context, settings),
+            "landmark_align": lambda: self._calibrate_landmark_align(context, settings),
+        }
+
+        handler = dispatch.get(request)
+        if handler:
+            result = handler()
         else:
             result = {"timestamp": time.time(), "request": request, "status": "unknown"}
 
