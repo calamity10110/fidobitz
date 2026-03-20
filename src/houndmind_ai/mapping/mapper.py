@@ -18,6 +18,11 @@ class MappingModule(Module):
     a "Home Map" file for later analysis or future navigation upgrades.
     """
 
+    _TRIG_CACHE: dict[int, tuple[float, float]] = {
+        deg: (math.cos(math.radians(deg)), math.sin(math.radians(deg)))
+        for deg in range(-360, 361)
+    }
+
     def __init__(self, name: str, enabled: bool = True, required: bool = False) -> None:
         super().__init__(name, enabled=enabled, required=required)
         self.last_save_ts = 0.0
@@ -152,6 +157,10 @@ class MappingModule(Module):
         if not isinstance(angles, dict) or not angles:
             return
         cell_size_cm = float(settings.get("cell_size_cm", 10.0))
+        if cell_size_cm <= 0:
+            cell_size_cm = 10.0
+        inv_cell_size = 1.0 / cell_size_cm
+
         grid_size = settings.get("grid_size", [100, 100])
         try:
             gx = int(grid_size[0])
@@ -172,13 +181,22 @@ class MappingModule(Module):
                 continue
             if dist <= 0:
                 continue
+
             # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
             # degrees where 0 = forward, positive = left.
-            rad = math.radians(yaw)
-            x_cm = dist * math.cos(rad)  # forward
-            y_cm = dist * math.sin(rad)  # left
-            ix = int(round(y_cm / cell_size_cm))
-            iy = int(round(x_cm / cell_size_cm))
+            yaw_int = int(round(yaw))
+            if -360 <= yaw_int <= 360:
+                cos_val, sin_val = self._TRIG_CACHE[yaw_int]
+            else:
+                rad = math.radians(yaw)
+                cos_val = math.cos(rad)
+                sin_val = math.sin(rad)
+
+            x_cm = dist * cos_val  # forward
+            y_cm = dist * sin_val  # left
+            ix = int(round(y_cm * inv_cell_size))
+            iy = int(round(x_cm * inv_cell_size))
+
             # Bound to grid size
             if abs(ix) > half_x or abs(iy) > half_y:
                 continue

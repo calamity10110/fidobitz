@@ -285,6 +285,170 @@ class ObstacleAvoidanceModule(Module):
             context.set("gentle_recovery_active", False)
             context.set("energy_speed_hint", None)
 
+        # Emergency retreat if obstacle is too close.
+        if isinstance(distance, (int, float)) and 0 < distance <= emergency_stop_cm:
+            context.set("navigation_action", avoid_action)
+            self._record_no_go("forward", now)
+            logger.info(
+                "Navigation emergency retreat: %s (distance=%s)", avoid_action, distance
+            )
+            return
+
+        clear_streak_min = _safe_int(settings.get("clear_path_streak_min", 0), 0)
+        if (
+            not obstacle
+            and clear_streak_min > 0
+            and self._clear_path_streak >= clear_streak_min
+        ):
+            if settings.get("clear_path_skip_scans", True):
+                context.set("navigation_action", "forward")
+                self._set_nav_led(context, "patrol")
+                self._clear_path_streak += 1
+                self._emit_navigation_decision(context, settings, DecisionData("forward", 0.0, True))
+                return
+
+        scan_result = self._scan_open_space(context, settings, now)
+        if scan_result is None:
+            if now - self._last_scan_ts < scan_interval_s:
+                if obstacle:
+                    context.set("navigation_action", avoid_action)
+                else:
+                    context.set("navigation_action", safe_action)
+                return
+            self._last_scan_ts = now
+            context.set("navigation_action", safe_action)
+            return
+
+        direction, score, confirmed = scan_result
+        logger.info(
+            "Navigation scan: dir=%s score=%.1f confirmed=%s",
+            direction,
+            score,
+            confirmed,
+        )
+
+        low_confidence_cooldown = _safe_float(
+            settings.get("low_confidence_cooldown_s", 0.8), 0.8
+        )
+        retry_limit = _safe_int(settings.get("scan_retry_limit", 2), 2)
+        if not confirmed:
+            self._last_low_confidence_ts = now
+            self._low_confidence_retries += 1
+        else:
+            self._low_confidence_retries = 0
+        if now - self._last_low_confidence_ts < low_confidence_cooldown:
+            if self._low_confidence_retries <= retry_limit:
+                return
+            if obstacle:
+                context.set("navigation_action", avoid_action)
+                self._record_no_go(direction, now)
+                return
+            context.set("navigation_action", safe_action)
+            return
+
+        if not confirmed and obstacle:
+            context.set("navigation_action", avoid_action)
+            self._record_no_go(direction, now)
+            return
+
+        # Detect approach events by comparing the forward baseline to current distance.
+        approaching = False
+        base_fwd = self._baseline_cm.get(
+            0, distance if isinstance(distance, (int, float)) else None
+        )
+        if isinstance(base_fwd, (int, float)) and isinstance(distance, (int, float)):
+            delta = max(0.0, base_fwd - distance)
+            pct = (delta / base_fwd) if base_fwd > 1e-6 else 0.0
+            approaching = (delta >= approach_delta_cm) or (pct >= approach_delta_pct)
+
+        # Confirm approach events via vote window to avoid noise.
+        approach_window = max(1, _safe_int(settings.get("approach_confirm_window", 3), 3))
+        if self._approach_votes.maxlen != approach_window:
+            self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
+        self._approach_votes.append(bool(approaching))
+        approach_confirmed = (
+            self._approach_votes.count(True)
+            >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
+        )
+
+        if approach_confirmed and now - self._last_approach_ts >= approach_cooldown_s:
+            context.set("navigation_action", avoid_action)
+            context.set(
+                "navigation_followup",
+                {
+                    "type": "retreat_turn",
+                    "backup_steps": backup_steps,
+                    "direction": retreat_turn_direction,
+                },
+            )
+            self._set_nav_led(context, "retreat")
+            self._record_no_go(direction, now)
+            self._last_approach_ts = now
+            self._record_avoidance(now)
+            return
+
+        if self._check_stuck(context, settings, now):
+            self._apply_avoidance_strategy(context, settings, avoid_action)
+            self._record_avoidance(now)
+            self._stuck_count += 1
+            context.set(
+                "stuck_recovery",
+                {
+                    "timestamp": now,
+                    "count": self._stuck_count,
+                    "strategy": self._last_strategy,
+                },
+            )
+            # Activate gentle recovery if threshold reached and not already active
+            if (
+                not self._gentle_recovery_active
+                and self._stuck_count >= gentle_recovery_threshold
+            ):
+                self._gentle_recovery_active = True
+                self._gentle_recovery_until = now + gentle_recovery_cooldown
+                self._update_gentle_recovery_context(context, now)
+            return
+
+        direction = self._apply_no_go_bias(direction, now, settings)
+
+        if direction == "left":
+            direction = self._apply_mapping_bias(context, settings, direction)
+            direction = self._apply_slam_bias(context, settings, direction)
+            if self._is_dead_end(direction):
+                direction = "right"
+            if self._turn_cooldown_active(settings):
+                direction = "forward"
+            context.set(
+                "navigation_turn",
+                {"direction": direction, "degrees": turn_degrees_on_gap},
+            )
+            context.set("navigation_action", "turn left")
+            self._set_nav_led(context, "turn")
+            self._record_turn(direction)
+        elif direction == "right":
+            direction = self._apply_mapping_bias(context, settings, direction)
+            direction = self._apply_slam_bias(context, settings, direction)
+            if self._is_dead_end(direction):
+                direction = "left"
+            if self._turn_cooldown_active(settings):
+                direction = "forward"
+            context.set(
+                "navigation_turn",
+                {"direction": direction, "degrees": turn_degrees_on_gap},
+            )
+            context.set("navigation_action", "turn right")
+            self._set_nav_led(context, "turn")
+            self._record_turn(direction)
+        elif isinstance(distance, (int, float)) and distance < safe_distance_cm:
+            context.set("navigation_action", avoid_action)
+            self._set_nav_led(context, "obstacle")
+            self._record_no_go("forward", now)
+        else:
+            context.set("navigation_action", "forward")
+            self._set_nav_led(context, "patrol")
+            self._clear_path_streak += 1
+
+        self._emit_navigation_decision(context, settings, DecisionData(direction, score, confirmed))
 
     def _scan_open_space(
         self, context, settings, now: float
@@ -355,11 +519,7 @@ class ObstacleAvoidanceModule(Module):
         if not angles:
             return None
 
-        valid_points = 0
-        for dist in distances.values():
-            if dist > 0:
-                valid_points += 1
-
+        valid_points = sum(1 for dist in distances.values() if dist > 0)
         if valid_points < min_valid_points:
             return None
         if valid_points / max(1, len(distances)) < min_valid_ratio:
@@ -497,15 +657,12 @@ class ObstacleAvoidanceModule(Module):
         right_count = 0
         # cells keys are "ix,iy" where ix = lateral (left + / right -), iy = forward cells
         for k, v in cells.items():
-            comma_idx = k.find(",")
-            if comma_idx == -1:
-                continue
             try:
-                ix = int(k[:comma_idx])
-                iy = int(k[comma_idx + 1:])
+                ix_s, iy_s = k.split(",")
+                ix = int(ix_s)
+                iy = int(iy_s)
             except Exception:
                 continue
-
             if iy < 0 or iy > depth_cells:
                 continue
             if ix < 0:
