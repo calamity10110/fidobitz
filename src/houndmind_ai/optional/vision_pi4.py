@@ -5,8 +5,10 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional, Any
+from urllib.parse import urlparse, parse_qs
 
 from houndmind_ai.core.module import Module
+from houndmind_ai.core.auth import get_shared_auth_token
 from houndmind_ai.optional.vision_preprocessing import VisionPreprocessor
 from houndmind_ai.optional.vision_inference_scheduler import VisionInferenceScheduler
 
@@ -74,7 +76,7 @@ class VisionPi4Module(Module):
                     context.set(
                         "vision_status", {"status": "ready", "backend": backend}
                     )
-                    self._maybe_start_http(settings)
+                    self._maybe_start_http(context, settings)
                     return
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("Picamera2 init failed: %s", exc)
@@ -95,7 +97,7 @@ class VisionPi4Module(Module):
         self._capture = capture
         self.available = True
         context.set("vision_status", {"status": "ready", "backend": "opencv"})
-        self._maybe_start_http(settings)
+        self._maybe_start_http(context, settings)
 
     def tick(self, context) -> None:
         if not self.available or not self.status.enabled:
@@ -159,20 +161,55 @@ class VisionPi4Module(Module):
             self._inference_scheduler.stop()
             self._inference_scheduler = None
 
-    def _maybe_start_http(self, settings: dict) -> None:
+    def _maybe_start_http(self, context, settings: dict) -> None:
         http_settings = settings.get("http", {})
         if not http_settings.get("enabled", False):
             return
-        host = http_settings.get("host", "0.0.0.0")
+        host = http_settings.get("host", "127.0.0.1")
         port = int(http_settings.get("port", 8090))
+
+        auth_token = get_shared_auth_token(context, http_settings)
+        if auth_token == context.get("shared_auth_token"):
+            logger.debug("No auth_token configured for vision_pi4; using generated shared session token.")
+            if context.get("shared_auth_token_printed") is not True:
+                print(f"Generated shared session token: {auth_token}")
+                context.set("shared_auth_token_printed", True)
+
+        if host == "0.0.0.0":
+            logger.warning("Vision HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
 
         module = self
 
         class Handler(BaseHTTPRequestHandler):
+            def _auth_ok(self, params: dict) -> bool:
+                import secrets
+                if not auth_token:
+                    return False
+                # check header first
+                hdr = self.headers.get("X-Auth-Token")
+                if hdr and secrets.compare_digest(hdr, auth_token):
+                    return True
+                # then query param
+                q = params.get("auth_token", [None])[0]
+                if q and secrets.compare_digest(q, auth_token):
+                    return True
+                return False
+
             def do_GET(self):
-                if self.path != "/stream":
+                parsed = urlparse(self.path)
+                path = parsed.path
+                params = parse_qs(parsed.query)
+
+                if path != "/stream":
                     self.send_response(404)
                     self.end_headers()
+                    return
+
+                if not self._auth_ok(params):
+                    self.send_response(401)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "unauthorized"}')
                     return
 
                 self.send_response(200)
