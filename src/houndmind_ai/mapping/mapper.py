@@ -11,12 +11,23 @@ from houndmind_ai.core.module import Module
 logger = logging.getLogger(__name__)
 
 
+def _build_trig_cache() -> dict[str, tuple[float, float]]:
+    cache = {}
+    for d in range(-360, 361):
+        cos_val = math.cos(math.radians(d))
+        sin_val = math.sin(math.radians(d))
+        cache[str(d)] = (cos_val, sin_val)
+        cache[f"{d}.0"] = (cos_val, sin_val)
+    return cache
+
 class MappingModule(Module):
     """Lightweight mapping module with optional home map persistence.
 
     This does not implement full SLAM. It stores sensor snapshots and can save
     a "Home Map" file for later analysis or future navigation upgrades.
     """
+
+    _TRIG_CACHE_STR: dict[str, tuple[float, float]] = _build_trig_cache()
 
     def __init__(self, name: str, enabled: bool = True, required: bool = False) -> None:
         super().__init__(name, enabled=enabled, required=required)
@@ -165,6 +176,12 @@ class MappingModule(Module):
         grid = mapping_state.get("grid") or {"cells": {}}
         cells = grid.get("cells") or {}
 
+        # Pre-calculate divisor outside the loop
+        inv_cell_size = 1.0 / cell_size_cm if cell_size_cm > 0 else 0.0
+
+        # Localize cache lookup to avoid self. overhead
+        trig_cache_str = self._TRIG_CACHE_STR
+
         for key, raw in angles.items():
             try:
                 yaw = float(key)
@@ -173,6 +190,7 @@ class MappingModule(Module):
                 continue
             if dist <= 0:
                 continue
+
             # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
             # degrees where 0 = forward, positive = left.
             rad = math.radians(yaw)

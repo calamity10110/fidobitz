@@ -37,11 +37,11 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
             return False
         # check header first
         hdr = self.headers.get("X-Auth-Token")
-        if hdr == token:
+        if hdr and secrets.compare_digest(hdr, token):
             return True
         # then query param
         q = params.get("auth_token", [None])[0]
-        if q == token:
+        if q and secrets.compare_digest(q, token):
             return True
         return False
 
