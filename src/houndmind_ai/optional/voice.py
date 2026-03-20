@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -213,6 +214,15 @@ class VoiceModule(Module):
         host = http_settings.get("host", "0.0.0.0")
         port = int(http_settings.get("port", 8091))
 
+        self._auth_token = http_settings.get("auth_token")
+        if not self._auth_token:
+            self._auth_token = secrets.token_urlsafe(32)
+            logger.debug("No auth_token configured for voice server; generated a secure session token: %s", self._auth_token)
+            print(f"Voice server generated session token: {self._auth_token}")
+
+        if host == "0.0.0.0":
+            logger.warning("Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
+
         module = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -224,14 +234,29 @@ class VoiceModule(Module):
                 self.end_headers()
                 self.wfile.write(data)
 
+            def _auth_ok(self, params: dict) -> bool:
+                token = getattr(module, "_auth_token", None)
+                if not token:
+                    return False
+                hdr = self.headers.get("X-Auth-Token")
+                if hdr and secrets.compare_digest(hdr, token):
+                    return True
+                q = params.get("auth_token", [None])[0]
+                if q and secrets.compare_digest(q, token):
+                    return True
+                return False
+
             def do_GET(self):
                 parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
                 if parsed.path == "/status":
                     self._send_json({"status": "ok"})
                     return
+                if not self._auth_ok(params):
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
                 if parsed.path == "/say":
-                    qs = parse_qs(parsed.query)
-                    text = (qs.get("text") or [None])[0]
+                    text = (params.get("text") or [None])[0]
                     if not text:
                         self._send_json({"error": "Missing text"}, status=400)
                         return
@@ -239,8 +264,7 @@ class VoiceModule(Module):
                     self._send_json({"status": "queued", "text": text})
                     return
                 if parsed.path == "/command":
-                    qs = parse_qs(parsed.query)
-                    action = (qs.get("action") or [None])[0]
+                    action = (params.get("action") or [None])[0]
                     if not action:
                         self._send_json({"error": "Missing action"}, status=400)
                         return
@@ -251,6 +275,13 @@ class VoiceModule(Module):
 
             def do_POST(self):
                 parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+                if parsed.path == "/status":
+                    self._send_json({"status": "ok"})
+                    return
+                if not self._auth_ok(params):
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
                 length = int(self.headers.get("Content-Length", "0"))
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
                 if parsed.path in ("/say", "/command"):

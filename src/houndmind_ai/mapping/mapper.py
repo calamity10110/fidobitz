@@ -163,6 +163,7 @@ class MappingModule(Module):
         if not isinstance(angles, dict) or not angles:
             return
         cell_size_cm = float(settings.get("cell_size_cm", 10.0))
+        inv_cell_size = 1.0 / cell_size_cm if cell_size_cm else 0.0
         grid_size = settings.get("grid_size", [100, 100])
         try:
             gx = int(grid_size[0])
@@ -191,24 +192,11 @@ class MappingModule(Module):
 
             # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
             # degrees where 0 = forward, positive = left.
-            # Fast path for string representations of integer angles
-            if key in trig_cache_str:
-                cos_rad, sin_rad = trig_cache_str[key]
-            else:
-                try:
-                    yaw = float(key)
-                except Exception:
-                    continue
-                rad = math.radians(yaw)
-                cos_rad = math.cos(rad)
-                sin_rad = math.sin(rad)
-
-            x_cm = dist * cos_rad  # forward
-            y_cm = dist * sin_rad  # left
-
+            rad = math.radians(yaw)
+            x_cm = dist * math.cos(rad)  # forward
+            y_cm = dist * math.sin(rad)  # left
             ix = int(round(y_cm * inv_cell_size))
             iy = int(round(x_cm * inv_cell_size))
-
             # Bound to grid size
             if abs(ix) > half_x or abs(iy) > half_y:
                 continue
@@ -250,13 +238,9 @@ class MappingModule(Module):
         openings: list[dict] = []
         safe_paths: list[dict] = []
 
-        def estimate_width_cm(dist: float, step_deg: float) -> float:
-            return max(0.0, dist * (step_deg * 0.0174533))
-
         step_deg = float(settings.get("scan_step_deg", 0.0))
         if step_deg <= 0.0 and len(items) > 1:
-            diffs = [abs(next_item[0] - item[0]) for item, next_item in zip(items, items[1:])]
-            diffs = [d for d in diffs if d > 0]
+            diffs = [d for a, b in zip(items, items[1:]) if (d := abs(b[0] - a[0])) > 0]
             if diffs:
                 diffs.sort()
                 mid = len(diffs) // 2
@@ -264,9 +248,11 @@ class MappingModule(Module):
         if step_deg <= 0.0:
             step_deg = 15.0
 
+        width_multiplier = step_deg * 0.0174533
+
         for yaw, dist in items:
-            width_cm = estimate_width_cm(dist, step_deg)
-            conf = min(1.0, dist / 200.0)
+            width_cm = dist * width_multiplier if dist > 0 else 0.0
+            conf = dist / 200.0 if dist < 200.0 else 1.0
             entry = {
                 "yaw": yaw,
                 "distance_cm": dist,
