@@ -1,4 +1,4 @@
-# HoundMind (PiDog Unified AI)
+# Fidobitz ( HoundMind fork - PiDog Unified AI)
 
 Version: v2026.01.18 • Author: 7Lynx
 
