@@ -217,11 +217,11 @@ class VoiceModule(Module):
         self._auth_token = http_settings.get("auth_token")
         if not self._auth_token:
             self._auth_token = secrets.token_urlsafe(32)
-            logger.debug("No auth_token configured for voice; generated a secure session token: %s", self._auth_token)
-            print(f"Voice generated session token: {self._auth_token}")
+            logger.debug("No auth_token configured for voice server; generated a secure session token: %s", self._auth_token)
+            print(f"Voice server generated session token: {self._auth_token}")
 
         if host == "0.0.0.0":
-            logger.warning("Voice HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
+            logger.warning("Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
 
         module = self
 
@@ -248,19 +248,15 @@ class VoiceModule(Module):
 
             def do_GET(self):
                 parsed = urlparse(self.path)
-                qs = parse_qs(parsed.query)
-
+                params = parse_qs(parsed.query)
                 if parsed.path == "/status":
                     self._send_json({"status": "ok"})
                     return
-
-                # All other endpoints require authentication
-                if not self._auth_ok(qs):
+                if not self._auth_ok(params):
                     self._send_json({"error": "unauthorized"}, status=401)
                     return
-
                 if parsed.path == "/say":
-                    text = (qs.get("text") or [None])[0]
+                    text = (params.get("text") or [None])[0]
                     if not text:
                         self._send_json({"error": "Missing text"}, status=400)
                         return
@@ -268,7 +264,7 @@ class VoiceModule(Module):
                     self._send_json({"status": "queued", "text": text})
                     return
                 if parsed.path == "/command":
-                    action = (qs.get("action") or [None])[0]
+                    action = (params.get("action") or [None])[0]
                     if not action:
                         self._send_json({"error": "Missing action"}, status=400)
                         return
@@ -279,13 +275,13 @@ class VoiceModule(Module):
 
             def do_POST(self):
                 parsed = urlparse(self.path)
-                qs = parse_qs(parsed.query)
-
-                # All POST endpoints require authentication
-                if not self._auth_ok(qs):
+                params = parse_qs(parsed.query)
+                if parsed.path == "/status":
+                    self._send_json({"status": "ok"})
+                    return
+                if not self._auth_ok(params):
                     self._send_json({"error": "unauthorized"}, status=401)
                     return
-
                 length = int(self.headers.get("Content-Length", "0"))
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
                 if parsed.path in ("/say", "/command"):
