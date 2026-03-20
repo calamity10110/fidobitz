@@ -14,8 +14,8 @@ This module manages logical operations related to PiDog's state, including:
 7-lynx
 """
 
-import global_state
-import time
+import global_state  # noqa: E402
+import time  # noqa: E402
 
 
 # ✅ Universal State Manager Function (Now Uses `set_state()` for Validation)

@@ -27,7 +27,7 @@ def test_setup_logging_respects_config(tmp_path):
         except Exception:
             pass
 
-    filt = setup_logging(cfg)
+    setup_logging(cfg)
 
     # root level should reflect `level`
     assert root.level == logging.WARNING

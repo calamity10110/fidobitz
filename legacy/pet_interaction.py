@@ -14,7 +14,7 @@ pet_cascade = cv2.CascadeClassifier(
     "custom_pet_model.xml"
 )  # Placeholder for pet detection model
 
-import random
+import random  # noqa: E402
 
 
 def detect_pet():

@@ -1,4 +1,3 @@
-import pytest
 from houndmind_ai.behavior.registry import BehaviorRegistry
 
 def test_pick_sequential_happy_path():

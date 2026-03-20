@@ -13,7 +13,7 @@ def test_logging_injects_required_fields(tmp_path):
 
     # Setup logging with a known context
     ctx = {"device_id": "dev-42", "runtime_tick": 7, "trace_id": "trace-xyz"}
-    filter_inst = setup_logging({"log_dir": log_dir, "log_file": log_file, "context": ctx, "level": "INFO"})
+    setup_logging({"log_dir": log_dir, "log_file": log_file, "context": ctx, "level": "INFO"})
 
     # Emit a test log record
     logger = logging.getLogger("tests.logging_required_fields")

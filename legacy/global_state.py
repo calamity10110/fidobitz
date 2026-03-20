@@ -22,8 +22,8 @@ Usage:
 7-lynx
 """
 
-import json
-import time
+import json  # noqa: E402
+import time  # noqa: E402
 
 # ✅ Global Variables for PiDog
 position = (
