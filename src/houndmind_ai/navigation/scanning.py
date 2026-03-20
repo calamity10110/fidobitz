@@ -347,7 +347,15 @@ def settings_continuous(context) -> bool:
         except Exception:
             continue
         # Treat basic locomotion or turn actions as movement.
-        if any(tok in a for tok in ("forward", "backward", "left", "right", "turn", "walk", "step")):
+        if (
+            "forward" in a
+            or "backward" in a
+            or "left" in a
+            or "right" in a
+            or "turn" in a
+            or "walk" in a
+            or "step" in a
+        ):
             return True
 
     return False
