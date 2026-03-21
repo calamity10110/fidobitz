@@ -192,9 +192,20 @@ class MappingModule(Module):
 
             # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
             # degrees where 0 = forward, positive = left.
-            rad = math.radians(yaw)
-            x_cm = dist * math.cos(rad)  # forward
-            y_cm = dist * math.sin(rad)  # left
+            if key in trig_cache_str:
+                cos_val, sin_val = trig_cache_str[key]
+            else:
+                try:
+                    yaw = float(key)
+                except Exception:
+                    continue
+                rad = math.radians(yaw)
+                cos_val = math.cos(rad)
+                sin_val = math.sin(rad)
+                trig_cache_str[key] = (cos_val, sin_val)
+
+            x_cm = dist * cos_val  # forward
+            y_cm = dist * sin_val  # left
             ix = int(round(y_cm * inv_cell_size))
             iy = int(round(x_cm * inv_cell_size))
             # Bound to grid size
