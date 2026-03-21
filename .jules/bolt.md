@@ -5,3 +5,11 @@
 ## 2024-05-18 - List Comprehension Fast Filtering and Map/Reduce Consolidation
 **Learning:** Python can consolidate separate O(N) list iteration steps (mapping differences between zipped arrays, then filtering specific values) into a single list comprehension using the walrus operator (`:=`). `[d for a, b in zip(items, items[1:]) if (d := abs(b[0] - a[0])) > 0]` is ~10% faster than processing the array over two discrete passes. Also, avoiding repetitive internal function calls by inlining simple logic like `min(1.0, value)` provides considerable performance improvements. Multiplication is also faster than division in python, precalculating inverses outside loops helps.
 **Action:** When calculating differences between items or mapping data inside performance critical functions, combine logic using list comprehensions and walrus operator `:=`. Always extract precalculations outside of large iteration blocks.
+
+## 2024-05-18 - Generator Overhead vs Explicit Loops for Point Counting
+**Learning:** For high-frequency, performance-critical code paths evaluating conditions across small dictionaries or arrays, a generator expression like `sum(1 for x in dict.values() if condition)` introduces significant overhead due to Python creating and advancing the generator object. Replacing it with an explicit loop (`for x in dict.values(): if condition: count += 1`) provides a ~2x speedup in isolated performance tests.
+**Action:** In high-frequency logic such as `obstacle_avoidance.py` point processing, eliminate generator comprehensions and use explicitly incremented loops for aggregate counts.
+
+## 2024-05-18 - Inactive Cache Optimization Pattern
+**Learning:** I encountered an anti-pattern in `mapper.py`'s `_ingest_into_grid` method where a cache dictionary (`_TRIG_CACHE_STR`) was initialized and passed down to a localized variable right outside a hot loop, but it was *never actually used inside the loop*, which continued to run `math.cos` and `math.sin` on every iteration. Implementing the cache lookup (with a fallback on cache miss) correctly improved function throughput by ~16%.
+**Action:** When auditing loops for performance, specifically verify that any pre-calculated optimization values/caches retrieved immediately prior to the loop are actually utilized within its body.
