@@ -185,16 +185,20 @@ class MappingModule(Module):
         for key, raw in angles.items():
             try:
                 dist = float(raw)
+                # Ensure we also extract the yaw from the key
+                yaw = int(float(key))
             except Exception:
                 continue
             if dist <= 0:
                 continue
 
+            # Use cached trigonometric values if available
+            cos_val, sin_val = trig_cache_str.get(key, (math.cos(math.radians(yaw)), math.sin(math.radians(yaw))))
+
             # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
             # degrees where 0 = forward, positive = left.
-            rad = math.radians(yaw)
-            x_cm = dist * math.cos(rad)  # forward
-            y_cm = dist * math.sin(rad)  # left
+            x_cm = dist * cos_val  # forward
+            y_cm = dist * sin_val  # left
             ix = int(round(y_cm * inv_cell_size))
             iy = int(round(x_cm * inv_cell_size))
             # Bound to grid size
