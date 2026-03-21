@@ -211,7 +211,7 @@ class VoiceModule(Module):
         http_settings = settings.get("http", {})
         if not http_settings.get("enabled", False):
             return
-        host = http_settings.get("host", "0.0.0.0")
+        host = http_settings.get("host", "127.0.0.1")
         port = int(http_settings.get("port", 8091))
 
         self._auth_token = http_settings.get("auth_token")
