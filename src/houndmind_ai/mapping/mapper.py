@@ -184,6 +184,7 @@ class MappingModule(Module):
 
         for key, raw in angles.items():
             try:
+                yaw = float(key)
                 dist = float(raw)
             except Exception:
                 continue
