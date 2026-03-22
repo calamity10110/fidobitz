@@ -78,7 +78,15 @@ def setup_logging(config: Optional[Dict[str, Any]] = None) -> ContextFilter:
     context_filter = ContextFilter(cfg.get("context", {}))
 
     # Avoid adding duplicate handlers on repeated setup calls
-    if not any(isinstance(h, logging.handlers.RotatingFileHandler) and getattr(h, "_houndmind_managed", False) for h in root.handlers):
+    has_managed = False
+    has_console = False
+    for h in root.handlers:
+        if isinstance(h, logging.handlers.RotatingFileHandler) and getattr(h, "_houndmind_managed", False):
+            has_managed = True
+        if isinstance(h, logging.StreamHandler) and getattr(h, "_houndmind_console", False):
+            has_console = True
+
+    if not has_managed:
         file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=backup_count)
         file_handler.setLevel(getattr(logging, level_name, logging.INFO))
         file_handler.setFormatter(JsonFormatter())
@@ -88,7 +96,7 @@ def setup_logging(config: Optional[Dict[str, Any]] = None) -> ContextFilter:
         setattr(file_handler, "_houndmind_managed", True)
         root.addHandler(file_handler)
 
-    if not any(isinstance(h, logging.StreamHandler) and getattr(h, "_houndmind_console", False) for h in root.handlers):
+    if not has_console:
         console = logging.StreamHandler()
         console.setLevel(getattr(logging, console_level_name, logging.INFO))
         console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
