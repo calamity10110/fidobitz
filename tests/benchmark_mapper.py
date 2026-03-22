@@ -1,5 +1,4 @@
 import time
-from houndmind_ai.mapping.mapper import MappingModule
 
 def old_method(items):
     diffs = [abs(items[i + 1][0] - items[i][0]) for i in range(len(items) - 1)]
