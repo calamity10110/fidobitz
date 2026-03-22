@@ -260,7 +260,7 @@
       "match_threshold": 0.6,
       "http": {
         "enabled": false,
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8088
       }
     },
@@ -274,7 +274,7 @@
       "frame_interval_s": 0.2,
       "http": {
         "enabled": false,
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8090
       }
     },
@@ -322,7 +322,7 @@
       },
       "http": {
         "enabled": false,
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8091
       }
     },
