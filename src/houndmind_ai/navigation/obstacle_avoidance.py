@@ -519,7 +519,7 @@ class ObstacleAvoidanceModule(Module):
         if not angles:
             return None
 
-        valid_points = sum(1 for dist in distances.values() if dist > 0)
+        valid_points = len([d for d in distances.values() if d > 0])
         if valid_points < min_valid_points:
             return None
         if valid_points / max(1, len(distances)) < min_valid_ratio:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 import logging
+import math
 import threading
 import time
 from typing import Callable, Deque, Any, Tuple, cast
@@ -217,7 +218,7 @@ class SensorService:
                 var_sum += diff * diff
             variance = var_sum / n_vals
 
-            std = variance**0.5
+            std = math.sqrt(variance)
             if std > 0:
                 filtered = [v for v in values if abs(v - mean) <= outlier_z * std]
                 if filtered:

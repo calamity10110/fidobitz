@@ -185,6 +185,7 @@ class MappingModule(Module):
         for key, raw in angles.items():
             try:
                 dist = float(raw)
+                yaw = int(key)
             except Exception:
                 continue
             if dist <= 0:
@@ -192,9 +193,13 @@ class MappingModule(Module):
 
             # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
             # degrees where 0 = forward, positive = left.
-            rad = math.radians(yaw)
-            x_cm = dist * math.cos(rad)  # forward
-            y_cm = dist * math.sin(rad)  # left
+            if str(yaw) in trig_cache_str:
+                c, s = trig_cache_str[str(yaw)]
+            else:
+                rad = math.radians(yaw)
+                c, s = math.cos(rad), math.sin(rad)
+            x_cm = dist * c  # forward
+            y_cm = dist * s  # left
             ix = int(round(y_cm * inv_cell_size))
             iy = int(round(x_cm * inv_cell_size))
             # Bound to grid size
