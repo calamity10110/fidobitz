@@ -9,3 +9,7 @@
 ## 2024-05-18 - Generators vs Loops/Comprehensions
 **Learning:** Python's generator expressions inside functions like `sum(1 for x in iterable)` or `any(condition for x in iterable)` introduce significant function call overhead and memory allocation per iteration step. In hot paths (like sensor ticking), replacing them with list comprehensions inside length evaluation `len([x for ...])` or explicit `for` loops is noticeably faster (~30% faster for lists, ~60% faster for string substrings using explicit `or`). Furthermore, using standard library C implementations like `math.sqrt()` is faster than `** 0.5`.
 **Action:** Avoid generator expressions in high-frequency loops. For counting elements, use `len([x for...])` or a manual for loop. For boolean reduction like `any()`, use an explicit for loop or direct `or` conditions. Always favor `math.sqrt` over `** 0.5`.
+
+## 2024-05-18 - Safe Dictionary Cache Lookups
+**Learning:** When checking against a string-keyed dictionary cache (like `_TRIG_CACHE_STR`), using `if key in cache:` without casting `key` can silently bypass the cache if the input dictionary contains mixed types (e.g., an `int` key `15` instead of `"15"`). This leads to a fallback path being taken unconditionally, degrading performance.
+**Action:** When optimizing dictionary cache lookups, ensure type safety by explicitly casting the lookup key to the expected type (e.g., `key_str = str(key)`) before checking the cache to prevent cache bypass regressions from mixed-type dictionary keys.

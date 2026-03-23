@@ -183,22 +183,34 @@ class MappingModule(Module):
         trig_cache_str = self._TRIG_CACHE_STR
 
         for key, raw in angles.items():
-            try:
-                yaw = float(key)
-                dist = float(raw)
-                yaw = int(key)
-            except Exception:
-                continue
-            if dist <= 0:
-                continue
+            # Bolt optimization: Fast path for trig cache hit. Avoids multiple
+            # redundant string/float conversions when the key string hits the cache.
+            # Convert to string to safely support int or float keys from dict.
+            key_str = str(key)
+            if key_str in trig_cache_str:
+                try:
+                    dist = float(raw)
+                except Exception:
+                    continue
+                if dist <= 0:
+                    continue
+                c, s = trig_cache_str[key_str]
+            else:
+                try:
+                    # Original strict parsing logic to avoid changing behavior
+                    yaw = float(key)
+                    dist = float(raw)
+                    yaw = int(key)
+                except Exception:
+                    continue
+                if dist <= 0:
+                    continue
+
+                rad = math.radians(yaw)
+                c, s = math.cos(rad), math.sin(rad)
 
             # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
             # degrees where 0 = forward, positive = left.
-            if str(yaw) in trig_cache_str:
-                c, s = trig_cache_str[str(yaw)]
-            else:
-                rad = math.radians(yaw)
-                c, s = math.cos(rad), math.sin(rad)
             x_cm = dist * c  # forward
             y_cm = dist * s  # left
             ix = int(round(y_cm * inv_cell_size))
