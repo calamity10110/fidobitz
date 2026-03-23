@@ -182,27 +182,38 @@ class MappingModule(Module):
         # Localize cache lookup to avoid self. overhead
         trig_cache_str = self._TRIG_CACHE_STR
 
+        # ⚡ Bolt: Optimize cache lookup by doing str(key) check BEFORE parsing
+        # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
+        # overhead for the vast majority of cached integer degree lookups.
         for key, raw in angles.items():
-            try:
-                yaw = float(key)
-                dist = float(raw)
-                yaw = int(key)
-            except Exception:
-                continue
-            if dist <= 0:
-                continue
-
-            # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
-            # degrees where 0 = forward, positive = left.
-            if str(yaw) in trig_cache_str:
-                c, s = trig_cache_str[str(yaw)]
+            str_key = str(key)
+            if str_key in trig_cache_str:
+                c, s = trig_cache_str[str_key]
+                try:
+                    dist = float(raw)
+                except Exception:
+                    continue
+                if dist <= 0:
+                    continue
             else:
+                try:
+                    yaw = int(float(key))
+                    dist = float(raw)
+                except Exception:
+                    continue
+                if dist <= 0:
+                    continue
+                # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
+                # degrees where 0 = forward, positive = left.
                 rad = math.radians(yaw)
                 c, s = math.cos(rad), math.sin(rad)
-            x_cm = dist * c  # forward
-            y_cm = dist * s  # left
-            ix = int(round(y_cm * inv_cell_size))
-            iy = int(round(x_cm * inv_cell_size))
+
+            # ⚡ Bolt: Avoid multiple multiplications per iteration by combining
+            # distance with the inverted cell size scalar early.
+            dist_inv = dist * inv_cell_size
+            ix = int(round(dist_inv * s))  # left
+            iy = int(round(dist_inv * c))  # forward
+
             # Bound to grid size
             if abs(ix) > half_x or abs(iy) > half_y:
                 continue
