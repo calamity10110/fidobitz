@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import secrets
 import threading
 import time
@@ -257,6 +258,9 @@ class FaceRecognitionModule(Module):
                     if not name:
                         self._send_json({"error": "Missing name"}, status=400)
                         return
+                    if not re.match(r"^[a-zA-Z0-9_ -]+$", name):
+                        self._send_json({"error": "Invalid name format"}, status=400)
+                        return
                     module._pending_commands.append({"action": "enroll", "name": name})
                     self._send_json({"status": "queued", "name": name})
                     return
@@ -281,6 +285,9 @@ class FaceRecognitionModule(Module):
                     name = payload.get("name")
                     if not name:
                         self._send_json({"error": "Missing name"}, status=400)
+                        return
+                    if not re.match(r"^[a-zA-Z0-9_ -]+$", name):
+                        self._send_json({"error": "Invalid name format"}, status=400)
                         return
                     module._pending_commands.append({"action": "enroll", "name": name})
                     self._send_json({"status": "queued", "name": name})
