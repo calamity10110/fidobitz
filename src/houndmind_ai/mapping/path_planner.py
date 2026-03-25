@@ -27,8 +27,14 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
     came_from = {}
     g_score = {start: 0}
 
+    # ⚡ Bolt: Localize functions and constants for speed in the hot loop
+    heappop = heapq.heappop
+    heappush = heapq.heappush
+    get_g = g_score.get
+    inf = float('inf')
+
     while open_set:
-        _, cost, node = heapq.heappop(open_set)
+        _, cost, node = heappop(open_set)
 
         if node == goal:
             path = [node]
@@ -39,7 +45,7 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
             path.reverse()
             return path
 
-        if cost > g_score.get(node, float('inf')):
+        if cost > get_g(node, inf):
             continue
 
         x, y = node
@@ -48,11 +54,11 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
         for nx, ny in ((x-1,y), (x+1,y), (x,y-1), (x,y+1)):
             if 0 <= nx < w and 0 <= ny < h and passable(grid[ny][nx]):
                 neighbor = (nx, ny)
-                if tentative_g < g_score.get(neighbor, float('inf')):
+                if tentative_g < get_g(neighbor, inf):
                     came_from[neighbor] = node
                     g_score[neighbor] = tentative_g
-                    f_score = tentative_g + abs(gx-nx) + abs(gy-ny)
-                    heapq.heappush(open_set, (f_score, tentative_g, neighbor))
+                    heappush(open_set, (tentative_g + abs(gx-nx) + abs(gy-ny), tentative_g, neighbor))
+
     return []
 
 def default_path_planning_hook(mapping_state, sample, settings):
