@@ -428,7 +428,7 @@ def main() -> int:
             content = req.read_text(encoding="utf-8")
             if not should_build_rtabmap and "rtabmap-py" in content:
                 tmp_req = cache_root / "requirements-noslam.txt"
-                lines = [l for l in content.splitlines() if "rtabmap-py" not in l]
+                lines = [line for line in content.splitlines() if "rtabmap-py" not in line]
                 tmp_req.write_text("\n".join(lines), encoding="utf-8")
                 req = tmp_req
         except Exception:
@@ -445,7 +445,7 @@ def main() -> int:
         content = req.read_text(encoding="utf-8")
         if "rtabmap-py" in content:
             tmp_req = cache_root / "requirements-noslam.txt"
-            lines = [l for l in content.splitlines() if "rtabmap-py" not in l]
+            lines = [line for line in content.splitlines() if "rtabmap-py" not in line]
             tmp_req.write_text("\n".join(lines), encoding="utf-8")
             req_to_install = tmp_req
 
