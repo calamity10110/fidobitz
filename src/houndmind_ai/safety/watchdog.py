@@ -115,7 +115,9 @@ class WatchdogModule(Module):
         self, names: Iterable[str], settings: dict[str, object]
     ) -> list[str]:
         max_restarts = _safe_int(settings.get("max_restarts", 3), 3)
-        module_cooldown = _safe_float(settings.get("restart_module_cooldown_s", 10.0), 10.0)
+        module_cooldown = _safe_float(
+            settings.get("restart_module_cooldown_s", 10.0), 10.0
+        )
         eligible: list[str] = []
         for name in names:
             last_ts = self._last_restart_ts.get(str(name), 0.0)

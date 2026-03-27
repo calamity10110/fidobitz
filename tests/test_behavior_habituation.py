@@ -6,7 +6,16 @@ from houndmind_ai.core.runtime import RuntimeContext
 def test_behavior_habituation(monkeypatch):
     mod = BehaviorModule("behavior", enabled=True)
     ctx = RuntimeContext()
-    ctx.set("settings", {"behavior": {"habituation_enabled": True, "habituation_threshold": 2, "habituation_recovery_s": 5}})
+    ctx.set(
+        "settings",
+        {
+            "behavior": {
+                "habituation_enabled": True,
+                "habituation_threshold": 2,
+                "habituation_recovery_s": 5,
+            }
+        },
+    )
 
     fsm_mod = importlib.import_module("houndmind_ai.behavior.fsm")
     t0 = 2000.0

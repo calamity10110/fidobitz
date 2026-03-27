@@ -55,7 +55,9 @@ class LocalPlannerModule(Module):
             context.set("local_plan", plan)
             return
 
-        conf = _safe_float(best_path.get("confidence", best_path.get("score", 0.0)), 0.0)
+        conf = _safe_float(
+            best_path.get("confidence", best_path.get("score", 0.0)), 0.0
+        )
         min_conf = _safe_float(settings.get("planner_min_confidence", 0.6), 0.6)
         max_age_s = _safe_float(settings.get("planner_max_age_s", 2.0), 2.0)
         sample_ts = mapping.get("timestamp", now)

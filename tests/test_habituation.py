@@ -16,12 +16,21 @@ def test_habituation_triggers_and_recovers(monkeypatch):
     # Control time within the module to simulate rapid events and recovery
     t = {"now": 0.0}
 
-    monkeypatch.setattr(
-        "houndmind_ai.behavior.habituation.time.time", lambda: t["now"]
-    )
+    monkeypatch.setattr("houndmind_ai.behavior.habituation.time.time", lambda: t["now"])
 
     ctx = DummyContext()
-    ctx.set("settings", {"habituation": {"enabled": True, "stimuli": ["sound"], "window_s": 1.0, "threshold": 3, "recovery_s": 2.0}})
+    ctx.set(
+        "settings",
+        {
+            "habituation": {
+                "enabled": True,
+                "stimuli": ["sound"],
+                "window_s": 1.0,
+                "threshold": 3,
+                "recovery_s": 2.0,
+            }
+        },
+    )
     module = HabituationModule("habituation")
 
     # First event

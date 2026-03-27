@@ -47,13 +47,16 @@ class VisionPi4Module(Module):
         # Setup preprocessor and inference scheduler if enabled
         self._preprocessor = VisionPreprocessor(settings.get("preprocessing", {}))
         if settings.get("inference_scheduler_enabled", True):
+
             def _on_inference_result(result):
                 self._last_inference_result = result
                 context.set("vision_inference_result", result)
+
             # Dummy inference function, replace with actual model
             def _dummy_inference(frame):
                 time.sleep(0.05)
                 return {"frame_id": id(frame), "result": "ok"}
+
             self._inference_scheduler = VisionInferenceScheduler(
                 _dummy_inference, result_callback=_on_inference_result
             )
@@ -170,19 +173,24 @@ class VisionPi4Module(Module):
 
         auth_token = get_shared_auth_token(context, http_settings)
         if auth_token == context.get("shared_auth_token"):
-            logger.debug("No auth_token configured for vision_pi4; using generated shared session token.")
+            logger.debug(
+                "No auth_token configured for vision_pi4; using generated shared session token."
+            )
             if context.get("shared_auth_token_printed") is not True:
                 print(f"Generated shared session token: {auth_token}")
                 context.set("shared_auth_token_printed", True)
 
         if host == "0.0.0.0":
-            logger.warning("Vision HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
+            logger.warning(
+                "Vision HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+            )
 
         module = self
 
         class Handler(BaseHTTPRequestHandler):
             def _auth_ok(self, params: dict) -> bool:
                 import secrets
+
                 if not auth_token:
                     return False
                 # check header first

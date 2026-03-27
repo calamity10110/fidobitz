@@ -78,7 +78,9 @@ class OrientationModule(Module):
 
         settings = (context.get("settings") or {}).get("orientation", {})
         scale = _safe_float(settings.get("gyro_scale", 1.0), 1.0)
-        bias = _safe_float(context.get("orientation_bias_z") or settings.get("bias_z", 0.0), 0.0)
+        bias = _safe_float(
+            context.get("orientation_bias_z") or settings.get("bias_z", 0.0), 0.0
+        )
 
         if self._last_ts is None:
             self._last_ts = ts

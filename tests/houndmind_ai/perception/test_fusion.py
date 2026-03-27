@@ -1,5 +1,6 @@
 from houndmind_ai.perception.fusion import PerceptionModule
 
+
 class DummySensorService:
     def __init__(self):
         self.subscribers = []
@@ -11,6 +12,7 @@ class DummySensorService:
     def unsubscribe(self, callback):
         self.unsubscribed.append(callback)
 
+
 class DummyContext:
     def __init__(self, data=None):
         self._data = data or {}
@@ -21,9 +23,11 @@ class DummyContext:
     def set(self, key, value):
         self._data[key] = value
 
+
 def test_perception_module_initialization():
     module = PerceptionModule("perception", enabled=True)
     assert module.status.enabled is True
+
 
 def test_start_subscribes_to_sensor_service():
     service = DummySensorService()
@@ -35,6 +39,7 @@ def test_start_subscribes_to_sensor_service():
     assert module._sensor_service == service
     assert module._on_sensor_reading in service.subscribers
 
+
 def test_start_handles_missing_sensor_service():
     context = DummyContext()
     module = PerceptionModule("perception", enabled=True)
@@ -42,6 +47,7 @@ def test_start_handles_missing_sensor_service():
     module.start(context)
 
     assert module._sensor_service is None
+
 
 def test_stop_unsubscribes_from_sensor_service():
     service = DummySensorService()
@@ -52,6 +58,7 @@ def test_stop_unsubscribes_from_sensor_service():
     module.stop(context)
 
     assert module._on_sensor_reading in service.unsubscribed
+
 
 def test_stop_handles_exception_during_unsubscribe():
     class ExceptionSensorService(DummySensorService):
@@ -66,10 +73,12 @@ def test_stop_handles_exception_during_unsubscribe():
     # This should not raise an exception
     module.stop(context)
 
+
 class DummyReading:
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
 
 def test_tick_updates_from_context_reading():
     reading = DummyReading(distance_cm=15)
@@ -81,6 +90,7 @@ def test_tick_updates_from_context_reading():
     perception = context.get("perception")
     assert perception is not None
     assert perception["distance"] == 15
+
 
 def test_on_sensor_reading_updates_from_reading():
     reading = DummyReading(distance_cm=10)
@@ -94,6 +104,7 @@ def test_on_sensor_reading_updates_from_reading():
     assert perception is not None
     assert perception["distance"] == 10
 
+
 def test_on_sensor_reading_no_context():
     reading = DummyReading(distance_cm=10)
     module = PerceptionModule("perception", enabled=True)
@@ -102,6 +113,7 @@ def test_on_sensor_reading_no_context():
     module._on_sensor_reading(reading)
 
     assert getattr(module, "_context", None) is None
+
 
 def test_update_from_reading_detects_obstacle():
     # default obstacle_cm is 20
@@ -117,6 +129,7 @@ def test_update_from_reading_detects_obstacle():
     module._update_from_reading(context, reading_clear)
     assert context.get("perception")["obstacle"] is False
 
+
 def test_update_from_reading_respects_settings():
     reading = DummyReading(distance_cm=15)
     # Customize obstacle threshold to 10cm
@@ -129,8 +142,9 @@ def test_update_from_reading_respects_settings():
     # Distance 15 > threshold 10, so no obstacle
     assert context.get("perception")["obstacle"] is False
 
+
 def test_update_from_reading_handles_missing_attributes():
-    reading = DummyReading() # No distance, touch, sound, etc.
+    reading = DummyReading()  # No distance, touch, sound, etc.
     context = DummyContext()
     module = PerceptionModule("perception", enabled=True)
 
@@ -143,12 +157,10 @@ def test_update_from_reading_handles_missing_attributes():
     assert perception["sound_direction"] is None
     assert perception["obstacle"] is False
 
+
 def test_update_from_reading_parses_all_fields():
     reading = DummyReading(
-        distance_cm=5,
-        touch="Y",
-        sound_detected=True,
-        sound_direction=90
+        distance_cm=5, touch="Y", sound_detected=True, sound_direction=90
     )
     context = DummyContext()
     module = PerceptionModule("perception", enabled=True)
@@ -161,6 +173,7 @@ def test_update_from_reading_parses_all_fields():
     assert perception["sound"] is True
     assert perception["sound_direction"] == 90
     assert perception["obstacle"] is True
+
 
 def test_update_from_reading_generates_pose_hint():
     # Distance is 60 (which is <= anchor_max_cm 120), heading is 45
@@ -179,6 +192,7 @@ def test_update_from_reading_generates_pose_hint():
     # confidence = (120 - 60) / 120 = 0.5
     assert hint["confidence"] == 0.5
 
+
 def test_update_from_reading_skips_pose_hint_low_confidence():
     # Setting distance to 100 (confidence = 20 / 120 = 0.166)
     # Default min_conf is 0.3
@@ -191,16 +205,14 @@ def test_update_from_reading_skips_pose_hint_low_confidence():
     # Pose hint shouldn't be set due to low confidence
     assert context.get("pose_hint") is None
 
+
 def test_update_from_reading_respects_custom_fusion_settings():
     reading = DummyReading(distance_cm=100, timestamp=1000)
     # Distance 100 with max 200 => conf 0.5
     # Min conf 0.4 => should pass
     settings = {
         "perception": {
-            "fusion": {
-                "fusion_anchor_distance_cm": 200,
-                "fusion_min_confidence": 0.4
-            }
+            "fusion": {"fusion_anchor_distance_cm": 200, "fusion_min_confidence": 0.4}
         }
     }
     context = DummyContext({"settings": settings, "current_heading": 90})
@@ -211,6 +223,7 @@ def test_update_from_reading_respects_custom_fusion_settings():
     hint = context.get("pose_hint")
     assert hint is not None
     assert hint["confidence"] == 0.5
+
 
 def test_update_from_reading_pose_hint_orientation_fallback():
     # current_heading is missing, fallback to orientation dict
@@ -224,6 +237,7 @@ def test_update_from_reading_pose_hint_orientation_fallback():
     assert hint is not None
     assert hint["heading_deg"] == 120.0
 
+
 def test_update_from_reading_pose_hint_no_heading():
     reading = DummyReading(distance_cm=60, timestamp=1000)
     context = DummyContext()  # No current_heading or orientation
@@ -232,6 +246,7 @@ def test_update_from_reading_pose_hint_no_heading():
     module._update_from_reading(context, reading)
 
     assert context.get("pose_hint") is None
+
 
 def test_update_from_reading_pose_hint_distance_out_of_bounds():
     # Distance is greater than max anchor
@@ -242,6 +257,7 @@ def test_update_from_reading_pose_hint_distance_out_of_bounds():
     module._update_from_reading(context, reading)
 
     assert context.get("pose_hint") is None
+
 
 def test_update_from_reading_pose_hint_invalid_data_handled_gracefully():
     # Simulate an exception in pose_hint logic. For example, pass invalid distance.

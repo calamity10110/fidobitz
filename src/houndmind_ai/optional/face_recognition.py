@@ -79,7 +79,10 @@ class FaceRecognitionModule(Module):
             data_obj = getattr(self._cv2, "data", None)
             if data_obj is not None:
                 if getattr(data_obj, "haarcascades", None) is not None:
-                    haar_path = str(Path(getattr(data_obj, "haarcascades")) / "haarcascade_frontalface_default.xml")
+                    haar_path = str(
+                        Path(getattr(data_obj, "haarcascades"))
+                        / "haarcascade_frontalface_default.xml"
+                    )
                 # Removed the empty if check for 'haaracascades'
             if not haar_path:
                 haar_path = ""
@@ -208,11 +211,16 @@ class FaceRecognitionModule(Module):
         self._auth_token = http_settings.get("auth_token")
         if not self._auth_token:
             self._auth_token = secrets.token_urlsafe(32)
-            logger.debug("No auth_token configured for face recognition; generated a secure session token: %s", self._auth_token)
+            logger.debug(
+                "No auth_token configured for face recognition; generated a secure session token: %s",
+                self._auth_token,
+            )
             print(f"Face recognition generated session token: {self._auth_token}")
 
         if host == "0.0.0.0":
-            logger.warning("Face recognition HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
+            logger.warning(
+                "Face recognition HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+            )
 
         module = self
 
@@ -307,7 +315,9 @@ class FaceRecognitionModule(Module):
         self._http_thread.start()
         logger.info("Face recognition HTTP server listening on %s:%s", host, port)
 
-    def _apply_lbph_recognition(self, entry: dict[str, Any], face_roi: Any, threshold: float) -> None:
+    def _apply_lbph_recognition(
+        self, entry: dict[str, Any], face_roi: Any, threshold: float
+    ) -> None:
         """Applies LBPH face recognition to a detected face ROI."""
         if self._recognizer is None:
             return
@@ -319,7 +329,12 @@ class FaceRecognitionModule(Module):
             if confidence > threshold:
                 entry["label"] = "unknown"
         except Exception as exc:  # noqa: BLE001
-            logger.warning("LBPH prediction failed for ROI with shape %s: %s", getattr(face_roi, 'shape', 'unknown'), exc, exc_info=True)
+            logger.warning(
+                "LBPH prediction failed for ROI with shape %s: %s",
+                getattr(face_roi, "shape", "unknown"),
+                exc,
+                exc_info=True,
+            )
 
     def _detect_opencv(self, frame, settings: dict) -> list[dict[str, Any]]:
         if self._cv2 is None or self._cascade is None:

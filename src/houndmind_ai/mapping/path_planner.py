@@ -1,7 +1,9 @@
 """
 A* path planning for grid/graph maps (for Pi4).
 """
+
 import heapq
+
 
 def astar(grid, start, goal, passable=lambda v: v == 0):
     """
@@ -23,7 +25,7 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
     if not (0 <= gx < w and 0 <= gy < h and passable(grid[gy][gx])):
         return []
 
-    open_set = [(abs(gx-sx) + abs(gy-sy), 0, start)]
+    open_set = [(abs(gx - sx) + abs(gy - sy), 0, start)]
     came_from = {}
     g_score = {start: 0}
 
@@ -31,7 +33,7 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
     heappop = heapq.heappop
     heappush = heapq.heappush
     get_g = g_score.get
-    inf = float('inf')
+    inf = float("inf")
 
     while open_set:
         _, cost, node = heappop(open_set)
@@ -51,15 +53,23 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
         x, y = node
         tentative_g = cost + 1
 
-        for nx, ny in ((x-1,y), (x+1,y), (x,y-1), (x,y+1)):
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
             if 0 <= nx < w and 0 <= ny < h and passable(grid[ny][nx]):
                 neighbor = (nx, ny)
                 if tentative_g < get_g(neighbor, inf):
                     came_from[neighbor] = node
                     g_score[neighbor] = tentative_g
-                    heappush(open_set, (tentative_g + abs(gx-nx) + abs(gy-ny), tentative_g, neighbor))
+                    heappush(
+                        open_set,
+                        (
+                            tentative_g + abs(gx - nx) + abs(gy - ny),
+                            tentative_g,
+                            neighbor,
+                        ),
+                    )
 
     return []
+
 
 def default_path_planning_hook(mapping_state, sample, settings):
     """
@@ -68,10 +78,10 @@ def default_path_planning_hook(mapping_state, sample, settings):
     settings: config dict, may include 'goal' as (x, y)
     Returns: dict with 'path' and 'success'
     """
-    grid = mapping_state.get('grid_map')
-    start = mapping_state.get('current_cell')
-    goal = settings.get('goal')
+    grid = mapping_state.get("grid_map")
+    start = mapping_state.get("current_cell")
+    goal = settings.get("goal")
     if not (grid and start and goal):
-        return {'path': [], 'success': False}
+        return {"path": [], "success": False}
     path = astar(grid, start, goal)
-    return {'path': path, 'success': bool(path)}
+    return {"path": path, "success": bool(path)}

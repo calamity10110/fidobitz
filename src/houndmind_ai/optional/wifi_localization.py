@@ -3,6 +3,7 @@ WiFi-based localization module for PiDog.
 Scans for nearby WiFi APs, records RSSI for each SSID, and provides fingerprint-based localization.
 Disabled by default in config.
 """
+
 import threading
 import time
 import subprocess
@@ -12,8 +13,18 @@ from houndmind_ai.core.module import Module
 import json
 import os
 
+
 class WifiLocalizationModule(Module):
-    def __init__(self, name: str, enabled: bool = False, required: bool = False, scan_interval: float = 10.0, ignore_ssids=None, fingerprint_file: str = "wifi_fingerprints.json", max_fingerprint_file_size: int = 262144):
+    def __init__(
+        self,
+        name: str,
+        enabled: bool = False,
+        required: bool = False,
+        scan_interval: float = 10.0,
+        ignore_ssids=None,
+        fingerprint_file: str = "wifi_fingerprints.json",
+        max_fingerprint_file_size: int = 262144,
+    ):
         super().__init__(name, enabled=enabled, required=required)
         self.scan_interval = scan_interval
         self.ignore_ssids = set(ignore_ssids or [])
@@ -28,7 +39,9 @@ class WifiLocalizationModule(Module):
         if not self.status.enabled:
             return
         self._stop_event.clear()
-        self._thread = threading.Thread(target=self._scan_loop, args=(context,), daemon=True)
+        self._thread = threading.Thread(
+            target=self._scan_loop, args=(context,), daemon=True
+        )
         self._thread.start()
 
     def stop(self, context):
@@ -42,7 +55,9 @@ class WifiLocalizationModule(Module):
             scan = self.scan_wifi()
             # Filter ignored SSIDs
             if scan and "networks" in scan:
-                scan["networks"] = [n for n in scan["networks"] if n["ssid"] not in self.ignore_ssids]
+                scan["networks"] = [
+                    n for n in scan["networks"] if n["ssid"] not in self.ignore_ssids
+                ]
             self._last_scan = scan
             context.set("wifi_scan", scan)
             # Optionally update fingerprints if location is known
@@ -55,7 +70,9 @@ class WifiLocalizationModule(Module):
     def scan_wifi():
         # Windows: use 'netsh wlan show networks mode=Bssid'
         try:
-            output = subprocess.check_output(["netsh", "wlan", "show", "networks", "mode=Bssid"], encoding="utf-8")
+            output = subprocess.check_output(
+                ["netsh", "wlan", "show", "networks", "mode=Bssid"], encoding="utf-8"
+            )
         except Exception as exc:
             return {"error": str(exc)}
         networks = []
@@ -89,7 +106,9 @@ class WifiLocalizationModule(Module):
             if len(data.encode("utf-8")) > self.max_fingerprint_file_size:
                 # Remove oldest entries until under limit
                 keys = list(self._fingerprints.keys())
-                while len(data.encode("utf-8")) > self.max_fingerprint_file_size and keys:
+                while (
+                    len(data.encode("utf-8")) > self.max_fingerprint_file_size and keys
+                ):
                     del self._fingerprints[keys[0]]
                     keys.pop(0)
                     data = json.dumps(self._fingerprints)

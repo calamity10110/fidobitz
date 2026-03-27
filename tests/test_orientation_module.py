@@ -24,13 +24,16 @@ class DummyReading:
 
 def test_calibrate_bias_success():
     ctx = DummyContext()
-    ctx.set("settings", {
-        "orientation": {
-            "calibration_settle_s": 0.0,
-            "calibration_duration_s": 1.0,
-            "calibration_samples": 3,
-        }
-    })
+    ctx.set(
+        "settings",
+        {
+            "orientation": {
+                "calibration_settle_s": 0.0,
+                "calibration_duration_s": 1.0,
+                "calibration_samples": 3,
+            }
+        },
+    )
     ctx.reading_queue = [
         DummyReading(gyro=(0.0, 0.0, 1.0)),
         DummyReading(gyro=(0.0, 0.0, 2.0)),
@@ -49,13 +52,16 @@ def test_calibrate_bias_success():
 
 def test_calibrate_bias_no_samples():
     ctx = DummyContext()
-    ctx.set("settings", {
-        "orientation": {
-            "calibration_settle_s": 0.0,
-            "calibration_duration_s": 0.1,  # Short duration
-            "calibration_samples": 3,
-        }
-    })
+    ctx.set(
+        "settings",
+        {
+            "orientation": {
+                "calibration_settle_s": 0.0,
+                "calibration_duration_s": 0.1,  # Short duration
+                "calibration_samples": 3,
+            }
+        },
+    )
     # Queue is empty, so it will get None for sensor_reading
 
     module = OrientationModule("orientation")
@@ -65,7 +71,10 @@ def test_calibrate_bias_no_samples():
         # We need time.time to return start, then start + 0.2 to break the loop.
         # Add a fourth call for the logger's use of time.time() inside the failure path.
         start_time = 1000.0
-        with patch("time.time", side_effect=[start_time, start_time, start_time + 0.2, start_time + 0.2]):
+        with patch(
+            "time.time",
+            side_effect=[start_time, start_time, start_time + 0.2, start_time + 0.2],
+        ):
             module._calibrate_bias(ctx, ctx.get("settings").get("orientation"))
 
     assert ctx.get("orientation_calibration_ok") is False
@@ -74,14 +83,17 @@ def test_calibrate_bias_no_samples():
 
 def test_calibrate_bias_max_bias_cap():
     ctx = DummyContext()
-    ctx.set("settings", {
-        "orientation": {
-            "calibration_settle_s": 0.0,
-            "calibration_duration_s": 1.0,
-            "calibration_samples": 2,
-            "calibration_max_bias_abs": 1.5,
-        }
-    })
+    ctx.set(
+        "settings",
+        {
+            "orientation": {
+                "calibration_settle_s": 0.0,
+                "calibration_duration_s": 1.0,
+                "calibration_samples": 2,
+                "calibration_max_bias_abs": 1.5,
+            }
+        },
+    )
     # The average will be 5.0, but should be capped at 1.5
     ctx.reading_queue = [
         DummyReading(gyro=(0.0, 0.0, 5.0)),
@@ -98,14 +110,17 @@ def test_calibrate_bias_max_bias_cap():
 
     # Test negative capping
     ctx2 = DummyContext()
-    ctx2.set("settings", {
-        "orientation": {
-            "calibration_settle_s": 0.0,
-            "calibration_duration_s": 1.0,
-            "calibration_samples": 2,
-            "calibration_max_bias_abs": 1.5,
-        }
-    })
+    ctx2.set(
+        "settings",
+        {
+            "orientation": {
+                "calibration_settle_s": 0.0,
+                "calibration_duration_s": 1.0,
+                "calibration_samples": 2,
+                "calibration_max_bias_abs": 1.5,
+            }
+        },
+    )
     # The average will be -5.0, but should be capped at -1.5
     ctx2.reading_queue = [
         DummyReading(gyro=(0.0, 0.0, -5.0)),
@@ -121,13 +136,16 @@ def test_calibrate_bias_max_bias_cap():
 
 def test_calibrate_bias_with_settle_time():
     ctx = DummyContext()
-    ctx.set("settings", {
-        "orientation": {
-            "calibration_settle_s": 1.5,
-            "calibration_duration_s": 1.0,
-            "calibration_samples": 1,
-        }
-    })
+    ctx.set(
+        "settings",
+        {
+            "orientation": {
+                "calibration_settle_s": 1.5,
+                "calibration_duration_s": 1.0,
+                "calibration_samples": 1,
+            }
+        },
+    )
     ctx.reading_queue = [
         DummyReading(gyro=(0.0, 0.0, 1.0)),
     ]

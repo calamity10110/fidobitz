@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DecisionData:
     """Encapsulates a navigation decision to reduce parameter count."""
+
     direction: str
     score: float
     confirmed: bool
@@ -173,24 +174,32 @@ class ObstacleAvoidanceModule(Module):
                         base_fwd = self._baseline_cm.get(
                             0, distance if isinstance(distance, (int, float)) else None
                         )
-                        if isinstance(base_fwd, (int, float)) and isinstance(distance, (int, float)):
+                        if isinstance(base_fwd, (int, float)) and isinstance(
+                            distance, (int, float)
+                        ):
                             delta = max(0.0, base_fwd - distance)
                             pct = (delta / base_fwd) if base_fwd > 1e-6 else 0.0
-                            approaching = (delta >= approach_delta_cm) or (pct >= approach_delta_pct)
+                            approaching = (delta >= approach_delta_cm) or (
+                                pct >= approach_delta_pct
+                            )
 
                         # Confirm approach events via vote window to avoid noise.
                         approach_window = max(
                             1, _safe_int(settings.get("approach_confirm_window", 3), 3)
                         )
                         if self._approach_votes.maxlen != approach_window:
-                            self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
+                            self._approach_votes = deque(
+                                self._approach_votes, maxlen=approach_window
+                            )
                         self._approach_votes.append(bool(approaching))
-                        approach_confirmed = (
-                            self._approach_votes.count(True)
-                            >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
-                        )
+                        approach_confirmed = self._approach_votes.count(
+                            True
+                        ) >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
 
-                        if approach_confirmed and now - self._last_approach_ts >= approach_cooldown_s:
+                        if (
+                            approach_confirmed
+                            and now - self._last_approach_ts >= approach_cooldown_s
+                        ):
                             nav_action = avoid_action
                             nav_followup = {
                                 "type": "retreat_turn",
@@ -202,7 +211,9 @@ class ObstacleAvoidanceModule(Module):
                             self._last_approach_ts = now
                             self._record_avoidance(now)
                         elif self._check_stuck(context, settings, now):
-                            self._apply_avoidance_strategy(context, settings, avoid_action)
+                            self._apply_avoidance_strategy(
+                                context, settings, avoid_action
+                            )
                             self._record_avoidance(now)
                             self._stuck_count += 1
                             stuck_recovery = {
@@ -216,36 +227,59 @@ class ObstacleAvoidanceModule(Module):
                                 and self._stuck_count >= gentle_recovery_threshold
                             ):
                                 self._gentle_recovery_active = True
-                                self._gentle_recovery_until = now + gentle_recovery_cooldown
+                                self._gentle_recovery_until = (
+                                    now + gentle_recovery_cooldown
+                                )
                         else:
                             direction = self._apply_no_go_bias(direction, now, settings)
                             if direction == "left":
                                 # First consult the lightweight occupancy grid (if enabled),
                                 # then apply the higher-level mapping bias and SLAM hints.
-                                direction = self._apply_grid_bias(context, settings, direction)
-                                direction = self._apply_mapping_bias(context, settings, direction)
-                                direction = self._apply_slam_bias(context, settings, direction)
+                                direction = self._apply_grid_bias(
+                                    context, settings, direction
+                                )
+                                direction = self._apply_mapping_bias(
+                                    context, settings, direction
+                                )
+                                direction = self._apply_slam_bias(
+                                    context, settings, direction
+                                )
                                 if self._is_dead_end(direction):
                                     direction = "right"
                                 if self._turn_cooldown_active(settings):
                                     direction = "forward"
-                                nav_turn = {"direction": direction, "degrees": turn_degrees_on_gap}
+                                nav_turn = {
+                                    "direction": direction,
+                                    "degrees": turn_degrees_on_gap,
+                                }
                                 nav_action = "turn left"
                                 nav_led = "turn"
                                 self._record_turn(direction)
                             elif direction == "right":
-                                direction = self._apply_grid_bias(context, settings, direction)
-                                direction = self._apply_mapping_bias(context, settings, direction)
-                                direction = self._apply_slam_bias(context, settings, direction)
+                                direction = self._apply_grid_bias(
+                                    context, settings, direction
+                                )
+                                direction = self._apply_mapping_bias(
+                                    context, settings, direction
+                                )
+                                direction = self._apply_slam_bias(
+                                    context, settings, direction
+                                )
                                 if self._is_dead_end(direction):
                                     direction = "left"
                                 if self._turn_cooldown_active(settings):
                                     direction = "forward"
-                                nav_turn = {"direction": direction, "degrees": turn_degrees_on_gap}
+                                nav_turn = {
+                                    "direction": direction,
+                                    "degrees": turn_degrees_on_gap,
+                                }
                                 nav_action = "turn right"
                                 nav_led = "turn"
                                 self._record_turn(direction)
-                            elif isinstance(distance, (int, float)) and distance < safe_distance_cm:
+                            elif (
+                                isinstance(distance, (int, float))
+                                and distance < safe_distance_cm
+                            ):
                                 nav_action = avoid_action
                                 nav_led = "obstacle"
                                 self._record_no_go("forward", now)
@@ -304,7 +338,9 @@ class ObstacleAvoidanceModule(Module):
                 context.set("navigation_action", "forward")
                 self._set_nav_led(context, "patrol")
                 self._clear_path_streak += 1
-                self._emit_navigation_decision(context, settings, DecisionData("forward", 0.0, True))
+                self._emit_navigation_decision(
+                    context, settings, DecisionData("forward", 0.0, True)
+                )
                 return
 
         scan_result = self._scan_open_space(context, settings, now)
@@ -362,13 +398,14 @@ class ObstacleAvoidanceModule(Module):
             approaching = (delta >= approach_delta_cm) or (pct >= approach_delta_pct)
 
         # Confirm approach events via vote window to avoid noise.
-        approach_window = max(1, _safe_int(settings.get("approach_confirm_window", 3), 3))
+        approach_window = max(
+            1, _safe_int(settings.get("approach_confirm_window", 3), 3)
+        )
         if self._approach_votes.maxlen != approach_window:
             self._approach_votes = deque(self._approach_votes, maxlen=approach_window)
         self._approach_votes.append(bool(approaching))
-        approach_confirmed = (
-            self._approach_votes.count(True)
-            >= _safe_int(settings.get("approach_confirm_threshold", 2), 2)
+        approach_confirmed = self._approach_votes.count(True) >= _safe_int(
+            settings.get("approach_confirm_threshold", 2), 2
         )
 
         if approach_confirmed and now - self._last_approach_ts >= approach_cooldown_s:
@@ -448,7 +485,9 @@ class ObstacleAvoidanceModule(Module):
             self._set_nav_led(context, "patrol")
             self._clear_path_streak += 1
 
-        self._emit_navigation_decision(context, settings, DecisionData(direction, score, confirmed))
+        self._emit_navigation_decision(
+            context, settings, DecisionData(direction, score, confirmed)
+        )
 
     def _scan_open_space(
         self, context, settings, now: float
@@ -603,9 +642,7 @@ class ObstacleAvoidanceModule(Module):
         if not settings.get("use_mapping_bias", True):
             return fallback
         weight = _safe_float(settings.get("mapping_bias_weight", 0.5), 0.5)
-        min_conf = _safe_float(
-            settings.get("mapping_bias_min_confidence", 0.6), 0.6
-        )
+        min_conf = _safe_float(settings.get("mapping_bias_min_confidence", 0.6), 0.6)
         cooldown = _safe_float(settings.get("mapping_bias_cooldown_s", 1.0), 1.0)
         if weight <= 0:
             return fallback
@@ -649,7 +686,9 @@ class ObstacleAvoidanceModule(Module):
             return fallback
 
         # Depth to consider ahead of robot (cm) and cell size
-        cell_size = float(settings.get("grid_cell_size_cm", settings.get("cell_size_cm", 10)))
+        cell_size = float(
+            settings.get("grid_cell_size_cm", settings.get("cell_size_cm", 10))
+        )
         depth_cm = float(settings.get("grid_influence_depth_cm", 100))
         depth_cells = max(1, int(depth_cm / max(1.0, cell_size)))
 

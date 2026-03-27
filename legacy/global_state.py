@@ -135,8 +135,20 @@ def print_global_state():
 
 def reset_global_state():
     """Resets PiDog’s global state to default values."""
-    global position, emotion, speed, idle_behavior, obstacle_memory, sound_direction, touch_count
-    global interaction_history, battery_level, active_mode, environment_status, error_log
+    global \
+        position, \
+        emotion, \
+        speed, \
+        idle_behavior, \
+        obstacle_memory, \
+        sound_direction, \
+        touch_count
+    global \
+        interaction_history, \
+        battery_level, \
+        active_mode, \
+        environment_status, \
+        error_log
 
     position = "standing"
     emotion = "neutral"

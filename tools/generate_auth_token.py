@@ -11,6 +11,7 @@ The script prints the token to stdout by default. Use `--print-config`
 to print a JSON config snippet suitable for insertion into
 `config/settings.jsonc`.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,10 +37,23 @@ def write_file_strict(path: Path, content: str) -> None:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Generate a secure auth token for telemetry dashboard")
-    p.add_argument("--length", type=int, default=32, help="token byte length for URL-safe token (default: 32)")
-    p.add_argument("--output", type=str, help="write token to file (restricted permissions)")
-    p.add_argument("--print-config", action="store_true", help="print JSON config snippet containing the token")
+    p = argparse.ArgumentParser(
+        description="Generate a secure auth token for telemetry dashboard"
+    )
+    p.add_argument(
+        "--length",
+        type=int,
+        default=32,
+        help="token byte length for URL-safe token (default: 32)",
+    )
+    p.add_argument(
+        "--output", type=str, help="write token to file (restricted permissions)"
+    )
+    p.add_argument(
+        "--print-config",
+        action="store_true",
+        help="print JSON config snippet containing the token",
+    )
     args = p.parse_args()
 
     # token_urlsafe takes number of bytes; choose default 32 -> ~43 chars

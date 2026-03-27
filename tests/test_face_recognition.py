@@ -3,9 +3,11 @@ from unittest.mock import MagicMock, patch
 
 from houndmind_ai.optional.face_recognition import FaceRecognitionModule
 
+
 @pytest.fixture
 def module():
     return FaceRecognitionModule("face_recognition")
+
 
 def test_apply_lbph_recognition_no_recognizer(module):
     module._recognizer = None
@@ -17,9 +19,10 @@ def test_apply_lbph_recognition_no_recognizer(module):
     assert "label" not in entry
     assert "confidence" not in entry
 
+
 def test_apply_lbph_recognition_success(module):
     mock_recognizer = MagicMock()
-    mock_recognizer.predict.return_value = (1, 50.0) # label_id, confidence
+    mock_recognizer.predict.return_value = (1, 50.0)  # label_id, confidence
     module._recognizer = mock_recognizer
     module._label_map = {1: "Alice"}
 
@@ -31,9 +34,10 @@ def test_apply_lbph_recognition_success(module):
     assert entry["label"] == "Alice"
     assert entry["confidence"] == 50.0
 
+
 def test_apply_lbph_recognition_unknown_due_to_threshold(module):
     mock_recognizer = MagicMock()
-    mock_recognizer.predict.return_value = (1, 80.0) # label_id, confidence
+    mock_recognizer.predict.return_value = (1, 80.0)  # label_id, confidence
     module._recognizer = mock_recognizer
     module._label_map = {1: "Alice"}
 
@@ -45,6 +49,7 @@ def test_apply_lbph_recognition_unknown_due_to_threshold(module):
     # Confidence is 80.0, which is > threshold 70.0, so it should be "unknown"
     assert entry["label"] == "unknown"
     assert entry["confidence"] == 80.0
+
 
 @patch("houndmind_ai.optional.face_recognition.logger")
 def test_apply_lbph_recognition_exception(mock_logger, module):
@@ -61,6 +66,7 @@ def test_apply_lbph_recognition_exception(mock_logger, module):
     mock_logger.warning.assert_called_once()
     assert "label" not in entry
     assert "confidence" not in entry
+
 
 def test_detect_opencv(module):
     mock_cv2 = MagicMock()

@@ -14,7 +14,7 @@ class DummyContext:
 
 def test_habituation_multiple_stimuli_and_thresholds(monkeypatch):
     t = {"now": 0.0}
-    monkeypatch.setattr("houndmind_ai.behavior.habituation.time.time", lambda: t["now"]) 
+    monkeypatch.setattr("houndmind_ai.behavior.habituation.time.time", lambda: t["now"])
 
     ctx = DummyContext()
     # configure both sound and touch with different thresholds

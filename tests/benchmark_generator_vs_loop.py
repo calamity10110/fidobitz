@@ -4,11 +4,14 @@ import random
 
 # Benchmark 1: generator vs list comp and explicit loop for mapping and reducing
 
+
 def test_generator(distances):
     return sum(1 for dist in distances.values() if dist > 0)
 
+
 def test_list_comp(distances):
     return len([d for d in distances.values() if d > 0])
+
 
 def test_for_loop(distances):
     c = 0
@@ -17,16 +20,21 @@ def test_for_loop(distances):
             c += 1
     return c
 
+
 # Benchmark 2: any() vs simple iteration / inline matching
 
+
 def test_any(s):
-    return any(c in s for c in ['a', 'b', 'c'])
+    return any(c in s for c in ["a", "b", "c"])
+
 
 def test_or(s):
-    return 'a' in s or 'b' in s or 'c' in s
+    return "a" in s or "b" in s or "c" in s
+
 
 def test_any_list(arr):
     return any(x == 5 for x in arr)
+
 
 def test_for_list(arr):
     for x in arr:
@@ -35,7 +43,7 @@ def test_for_list(arr):
     return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("--- Benchmark: sum(1 for ...) vs list comp vs for loop ---")
     distances = {i: random.uniform(-10, 100) for i in range(-60, 61, 5)}
     n = 100000

@@ -1,5 +1,6 @@
 from houndmind_ai.behavior.registry import BehaviorRegistry
 
+
 def test_pick_sequential_happy_path():
     registry = BehaviorRegistry()
     registry.register("action1", lambda: "1")
@@ -14,6 +15,7 @@ def test_pick_sequential_happy_path():
     # Should cycle back
     assert registry.pick_sequential(choices) == "action1"
 
+
 def test_pick_sequential_unregistered_choices():
     registry = BehaviorRegistry()
     registry.register("action1", lambda: "1")
@@ -26,6 +28,7 @@ def test_pick_sequential_unregistered_choices():
     # Should cycle back
     assert registry.pick_sequential(choices) == "action1"
 
+
 def test_pick_sequential_no_eligible_choices():
     registry = BehaviorRegistry()
 
@@ -33,6 +36,7 @@ def test_pick_sequential_no_eligible_choices():
     assert registry.pick_sequential(choices) is None
 
     assert registry.pick_sequential([]) is None
+
 
 def test_pick_sequential_changing_choices():
     registry = BehaviorRegistry()
