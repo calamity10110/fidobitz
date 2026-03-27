@@ -82,25 +82,34 @@ class ObstacleAvoidanceModule(Module):
         settings = (context.get("settings") or {}).get("navigation", {})
         avoid_action = settings.get("avoid_action", "backward")
         safe_action = settings.get("safe_action", "stand")
-        scan_interval_s = _safe_float(settings.get("scan_interval_s", 0.5), 0.5)
-        emergency_stop_cm = _safe_float(settings.get("emergency_stop_cm", 12), 12)
-        safe_distance_cm = _safe_float(settings.get("safe_distance_cm", 35), 35)
-        approach_delta_cm = _safe_float(settings.get("approach_delta_cm", 10), 10)
-        approach_delta_pct = _safe_float(settings.get("approach_delta_pct", 0.25), 0.25)
-        approach_cooldown_s = _safe_float(settings.get("approach_cooldown_s", 2.0), 2.0)
-        backup_steps = _safe_int(settings.get("backup_steps", 2), 2)
         retreat_turn_direction = settings.get("retreat_turn_direction", "auto")
 
-        # Gentle recovery config
-        gentle_recovery_threshold = _safe_int(
-            settings.get("gentle_recovery_stuck_count", 3), 3
-        )
-        gentle_recovery_cooldown = _safe_float(
-            settings.get("gentle_recovery_cooldown_s", 8.0), 8.0
-        )
+        # ⚡ Bolt: Fast-path for numeric settings extraction. Bypasses
+        # individual function calls and try/except blocks per tick.
+        try:
+            scan_interval_s = float(settings.get("scan_interval_s", 0.5))
+            emergency_stop_cm = float(settings.get("emergency_stop_cm", 12))
+            safe_distance_cm = float(settings.get("safe_distance_cm", 35))
+            approach_delta_cm = float(settings.get("approach_delta_cm", 10))
+            approach_delta_pct = float(settings.get("approach_delta_pct", 0.25))
+            approach_cooldown_s = float(settings.get("approach_cooldown_s", 2.0))
+            backup_steps = int(settings.get("backup_steps", 2))
+            gentle_recovery_threshold = int(settings.get("gentle_recovery_stuck_count", 3))
+            gentle_recovery_cooldown = float(settings.get("gentle_recovery_cooldown_s", 8.0))
+            turn_degrees_on_gap = int(settings.get("turn_degrees_on_gap", 30))
+        except (TypeError, ValueError):
+            scan_interval_s = _safe_float(settings.get("scan_interval_s", 0.5), 0.5)
+            emergency_stop_cm = _safe_float(settings.get("emergency_stop_cm", 12), 12)
+            safe_distance_cm = _safe_float(settings.get("safe_distance_cm", 35), 35)
+            approach_delta_cm = _safe_float(settings.get("approach_delta_cm", 10), 10)
+            approach_delta_pct = _safe_float(settings.get("approach_delta_pct", 0.25), 0.25)
+            approach_cooldown_s = _safe_float(settings.get("approach_cooldown_s", 2.0), 2.0)
+            backup_steps = _safe_int(settings.get("backup_steps", 2), 2)
+            gentle_recovery_threshold = _safe_int(settings.get("gentle_recovery_stuck_count", 3), 3)
+            gentle_recovery_cooldown = _safe_float(settings.get("gentle_recovery_cooldown_s", 8.0), 8.0)
+            turn_degrees_on_gap = _safe_int(settings.get("turn_degrees_on_gap", 30), 30)
 
         now = time.time()
-        turn_degrees_on_gap = _safe_int(settings.get("turn_degrees_on_gap", 30), 30)
 
         # Action/result variables
         nav_action = None
@@ -493,33 +502,71 @@ class ObstacleAvoidanceModule(Module):
             return None
 
     def _process_scan(self, reading, settings) -> tuple[str, float, bool] | None:
-        yaw_max = _safe_int(settings.get("scan_yaw_max_deg", 60), 60)
-        ema_alpha = _safe_float(settings.get("baseline_ema", 0.25), 0.25)
-        min_gap_width_deg = _safe_int(settings.get("min_gap_width_deg", 30), 30)
-        min_score_cm = _safe_float(settings.get("min_score_cm", 60), 60)
-        confirm_window = max(1, _safe_int(settings.get("confirm_window", 2), 2))
-        confirm_threshold = max(1, _safe_int(settings.get("confirm_threshold", 2), 2))
-        turn_confidence_min = _safe_float(settings.get("turn_confidence_min", 0.6), 0.6)
-        min_valid_points = _safe_int(settings.get("scan_min_valid_points", 3), 3)
-        min_valid_ratio = _safe_float(settings.get("scan_min_valid_ratio", 0.5), 0.5)
+        # ⚡ Bolt: Fast-path for numeric settings extraction. Bypasses
+        # individual function calls and try/except blocks per scan processing.
+        try:
+            yaw_max = int(settings.get("scan_yaw_max_deg", 60))
+            ema_alpha = float(settings.get("baseline_ema", 0.25))
+            min_gap_width_deg = int(settings.get("min_gap_width_deg", 30))
+            min_score_cm = float(settings.get("min_score_cm", 60))
+            confirm_window = max(1, int(settings.get("confirm_window", 2)))
+            confirm_threshold = max(1, int(settings.get("confirm_threshold", 2)))
+            turn_confidence_min = float(settings.get("turn_confidence_min", 0.6))
+            min_valid_points = int(settings.get("scan_min_valid_points", 3))
+            min_valid_ratio = float(settings.get("scan_min_valid_ratio", 0.5))
+        except (TypeError, ValueError):
+            yaw_max = _safe_int(settings.get("scan_yaw_max_deg", 60), 60)
+            ema_alpha = _safe_float(settings.get("baseline_ema", 0.25), 0.25)
+            min_gap_width_deg = _safe_int(settings.get("min_gap_width_deg", 30), 30)
+            min_score_cm = _safe_float(settings.get("min_score_cm", 60), 60)
+            confirm_window = max(1, _safe_int(settings.get("confirm_window", 2), 2))
+            confirm_threshold = max(1, _safe_int(settings.get("confirm_threshold", 2), 2))
+            turn_confidence_min = _safe_float(settings.get("turn_confidence_min", 0.6), 0.6)
+            min_valid_points = _safe_int(settings.get("scan_min_valid_points", 3), 3)
+            min_valid_ratio = _safe_float(settings.get("scan_min_valid_ratio", 0.5), 0.5)
 
         mode = getattr(reading, "mode", "three_way")
         data = getattr(reading, "data", {})
         distances: dict[int, float] = {}
+        valid_points = 0
+
+        # ⚡ Bolt: Integrate valid_points counting into the data mapping loop.
+        # This removes the need for a separate O(N) list comprehension pass over `distances`.
+        # Uses explicit try/except blocks to bypass _safe_float overhead on the happy path.
         if mode == "sweep":
-            distances = {int(k): _safe_float(v, 0.0) for k, v in data.items()}
+            for k, v in data.items():
+                try:
+                    k_int = int(k)
+                    try:
+                        dist = float(v)
+                    except (TypeError, ValueError):
+                        dist = 0.0
+                    distances[k_int] = dist
+                    if dist > 0:
+                        valid_points += 1
+                except (TypeError, ValueError):
+                    # Only skip if the key itself is invalid
+                    pass
             angles = sorted(distances.keys())
         else:
-            left = _safe_float(data.get("left", 0.0), 0.0)
-            right = _safe_float(data.get("right", 0.0), 0.0)
-            forward = _safe_float(data.get("forward", 0.0), 0.0)
+            try:
+                left = float(data.get("left", 0.0))
+                right = float(data.get("right", 0.0))
+                forward = float(data.get("forward", 0.0))
+            except (TypeError, ValueError):
+                left = _safe_float(data.get("left", 0.0), 0.0)
+                right = _safe_float(data.get("right", 0.0), 0.0)
+                forward = _safe_float(data.get("forward", 0.0), 0.0)
+
             distances = {-yaw_max: left, 0: forward, yaw_max: right}
             angles = [-yaw_max, 0, yaw_max]
+            for v in distances.values():
+                if v > 0:
+                    valid_points += 1
 
         if not angles:
             return None
 
-        valid_points = len([d for d in distances.values() if d > 0])
         if valid_points < min_valid_points:
             return None
         if valid_points / max(1, len(distances)) < min_valid_ratio:
