@@ -238,15 +238,16 @@ class MappingModule(Module):
         min_safe_conf = float(settings.get("safe_path_cell_conf_min", 0.5))
 
         items = []
+        # ⚡ Bolt: Parse distance before yaw to short-circuit earlier if invalid/negative
         for key, dist in angles.items():
             try:
-                yaw = int(float(key))
                 distance = float(dist)
+                if distance <= 0:
+                    continue
+                yaw = int(float(key))
+                items.append((yaw, distance))
             except Exception:
                 continue
-            if distance <= 0:
-                continue
-            items.append((yaw, distance))
 
         if not items:
             return [], [], None
@@ -267,39 +268,34 @@ class MappingModule(Module):
 
         width_multiplier = step_deg * 0.0174533
 
-        for yaw, dist in items:
-            width_cm = dist * width_multiplier if dist > 0 else 0.0
-            conf = dist / 200.0 if dist < 200.0 else 1.0
-            entry = {
-                "yaw": yaw,
-                "distance_cm": dist,
-                "width_cm": width_cm,
-                "confidence": conf,
-            }
-            if (
-                min_open_width_cm <= width_cm <= max_open_width_cm
-                and conf >= min_open_conf
-            ):
-                openings.append(entry)
-            if (
-                min_safe_width_cm <= width_cm <= max_safe_width_cm
-                and conf >= min_safe_conf
-            ):
-                safe_paths.append(entry)
-
+        # ⚡ Bolt: Consolidate dict creation and safe path scoring into a single pass
+        # to avoid creating dictionaries for discarded angles and looping safe_paths twice.
         best_path = None
-        if safe_paths:
-            weight_width = float(settings.get("safe_path_score_weight_width", 0.6))
-            weight_distance = float(
-                settings.get("safe_path_score_weight_distance", 0.4)
-            )
-            best_score = -1.0
-            for entry in safe_paths:
-                score = (entry["width_cm"] * weight_width) + (
-                    entry["distance_cm"] * weight_distance
-                )
-                if score > best_score:
-                    best_score = score
-                    best_path = {**entry, "score": score}
+        best_score = -1.0
+        weight_width = float(settings.get("safe_path_score_weight_width", 0.6))
+        weight_distance = float(settings.get("safe_path_score_weight_distance", 0.4))
+
+        for yaw, dist in items:
+            width_cm = dist * width_multiplier # distance is already > 0
+            conf = dist * 0.005 if dist < 200.0 else 1.0 # 1/200 = 0.005
+
+            is_opening = min_open_width_cm <= width_cm <= max_open_width_cm and conf >= min_open_conf
+            is_safe = min_safe_width_cm <= width_cm <= max_safe_width_cm and conf >= min_safe_conf
+
+            if is_opening or is_safe:
+                entry = {
+                    "yaw": yaw,
+                    "distance_cm": dist,
+                    "width_cm": width_cm,
+                    "confidence": conf,
+                }
+                if is_opening:
+                    openings.append(entry)
+                if is_safe:
+                    safe_paths.append(entry)
+                    score = (width_cm * weight_width) + (dist * weight_distance)
+                    if score > best_score:
+                        best_score = score
+                        best_path = {**entry, "score": score}
 
         return openings, safe_paths, best_path
