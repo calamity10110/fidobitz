@@ -1,8 +1,6 @@
-# Fidobitz ( fidobitz fork - PiDog Unified AI)
 
-Version: v2026.01.18 • Author: 7Lynx
-
-fidobitz is a unified AI control framework for the SunFounder PiDog. Simulation mode is no longer supported; all features require real PiDog hardware. PackMind and CanineCore are now a single system.
+# fidobitz 
+This project is a unified AI control framework for the SunFounder PiDog. Simulation mode is not supported; all features require real PiDog hardware. 
 
 ## Current scope
 - Target hardware: **Raspberry Pi 3/4/5** (recommended: Raspberry Pi OS Lite, no desktop).
@@ -13,18 +11,18 @@ fidobitz is a unified AI control framework for the SunFounder PiDog. Simulation 
 
 ## Installer Quickstart (Recommended)
 Run the automated installer on a Raspberry Pi:
-
 ```bash
+bash git clone https://github.com/calamity10110/fidobitz
 bash scripts/install_houndmind.sh
 ```
-
 This installs the SunFounder PiDog dependencies **and** fidobitz in the same environment. It auto-selects Pi3 lite or Pi4 full. For manual steps, see [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Before You Start (Pi OS Checklist)
 - Flash Raspberry Pi OS and complete first boot setup.
 - Preferred OS: **Raspberry Pi OS Bookworm (64-bit)**. For full (Pi4) installs, Python 3.10 is recommended for best wheel compatibility.
 
-IMPORTANT: Bookworm is recommended because many heavy packages used by the full (Pi4) preset have prebuilt wheels for Bookworm but may not yet provide wheels for newer distributions (for example, Trixie with Python 3.13). If you hit build errors, switch to Bookworm, use a Python 3.10 interpreter, or run the installer with `--preset lite`.
+IMPORTANT: Bookworm is recommended because many heavy packages used by the full (Pi4) preset have prebuilt wheels for Bookworm but may not yet provide wheels for newer distributions (for example, Trixie with Python 3.13). 
+If you hit build errors, switch to Bookworm, use a Python 3.10 interpreter, or run the installer with `--preset lite`.
 - Update and reboot:
   - `sudo apt update && sudo apt upgrade -y`
 - Enable interfaces in `raspi-config`:
@@ -148,7 +146,7 @@ See [docs/FEATURES_GUIDE.md](docs/FEATURES_GUIDE.md) for detailed enable/disable
 
 ## Notes
 - This project now runs **only on the real PiDog hardware** (no simulation/shim mode).
-- PackMind and CanineCore are now unified; all features are part of a single runtime.
+- PackMind,HoundMind, CanineCore and all features are part of a single runtime fidobitz.
 - Hardware access is required for `houndmind_ai/hal/*` modules.
 - Watchdogs are enabled by default but do not force actions or restarts unless configured.
 
