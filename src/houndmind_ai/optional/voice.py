@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 from typing import Any
 
 from houndmind_ai.core.module import Module
+from houndmind_ai.core.auth import get_shared_auth_token
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ class VoiceModule(Module):
 
         # Start HTTP control surface if enabled
         try:
-            self._maybe_start_http(settings)
+            self._maybe_start_http(context, settings)
         except Exception:
             logger.exception("Failed to start voice HTTP server")
 
@@ -207,18 +208,19 @@ class VoiceModule(Module):
 
         logger.info("TTS not available to speak: %s", text)
 
-    def _maybe_start_http(self, settings: dict) -> None:
+    def _maybe_start_http(self, context, settings: dict) -> None:
         http_settings = settings.get("http", {})
         if not http_settings.get("enabled", False):
             return
         host = http_settings.get("host", "127.0.0.1")
         port = int(http_settings.get("port", 8091))
 
-        self._auth_token = http_settings.get("auth_token")
-        if not self._auth_token:
-            self._auth_token = secrets.token_urlsafe(32)
-            logger.debug("No auth_token configured for voice server; generated a secure session token: %s", self._auth_token)
-            print(f"Voice server generated session token: {self._auth_token}")
+        self._auth_token = get_shared_auth_token(context, http_settings)
+        if self._auth_token == context.get("shared_auth_token"):
+            logger.debug("No auth_token configured for voice server; using generated shared session token.")
+            if context.get("shared_auth_token_printed") is not True:
+                print(f"Generated shared session token: {self._auth_token}")
+                context.set("shared_auth_token_printed", True)
 
         if host == "0.0.0.0":
             logger.warning("Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
@@ -231,6 +233,8 @@ class VoiceModule(Module):
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
                 self.end_headers()
                 self.wfile.write(data)
 
