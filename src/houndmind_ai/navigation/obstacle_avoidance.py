@@ -507,7 +507,18 @@ class ObstacleAvoidanceModule(Module):
         data = getattr(reading, "data", {})
         distances: dict[int, float] = {}
         if mode == "sweep":
-            distances = {int(k): _safe_float(v, 0.0) for k, v in data.items()}
+            try:
+                # ⚡ Bolt: Fast-path for common sweep dictionary payloads where
+                # keys are safe ints and values are safe floats.
+                distances = {int(k): float(v) for k, v in data.items()}
+            except Exception:
+                # Fallback: slow safe casting
+                distances = {}
+                for k, v in data.items():
+                    try:
+                        distances[int(float(k))] = _safe_float(v, 0.0)
+                    except Exception:
+                        pass
             angles = sorted(distances.keys())
         else:
             left = _safe_float(data.get("left", 0.0), 0.0)
