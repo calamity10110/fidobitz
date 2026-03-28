@@ -545,8 +545,15 @@ class ObstacleAvoidanceModule(Module):
         mode = getattr(reading, "mode", "three_way")
         data = getattr(reading, "data", {})
         distances: dict[int, float] = {}
+        valid_points = 0
         if mode == "sweep":
-            distances = {int(k): _safe_float(v, 0.0) for k, v in data.items()}
+            # ⚡ Bolt: Track valid_points while building distances dict to avoid
+            # a secondary O(N) list allocation and iteration step.
+            for k, v in data.items():
+                val = _safe_float(v, 0.0)
+                distances[int(k)] = val
+                if val > 0:
+                    valid_points += 1
             angles = sorted(distances.keys())
         else:
             left = _safe_float(data.get("left", 0.0), 0.0)
@@ -554,11 +561,15 @@ class ObstacleAvoidanceModule(Module):
             forward = _safe_float(data.get("forward", 0.0), 0.0)
             distances = {-yaw_max: left, 0: forward, yaw_max: right}
             angles = [-yaw_max, 0, yaw_max]
+            if left > 0:
+                valid_points += 1
+            if right > 0:
+                valid_points += 1
+            if forward > 0:
+                valid_points += 1
 
         if not angles:
             return None
-
-        valid_points = len([d for d in distances.values() if d > 0])
         if valid_points < min_valid_points:
             return None
         if valid_points / max(1, len(distances)) < min_valid_ratio:
