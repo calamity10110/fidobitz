@@ -14,6 +14,7 @@ def _safe_float(v: Any, default: float = 0.0) -> float:
     except Exception:
         return default
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,7 +48,9 @@ class _RtabmapAdapter:
                 # ignore if API differs
                 pass
 
-    def process(self, frame: Any, imu: dict | None = None, timestamp: float | None = None) -> None:
+    def process(
+        self, frame: Any, imu: dict | None = None, timestamp: float | None = None
+    ) -> None:
         if self._rtab is None:
             raise RuntimeError("RTAB-Map backend not initialized")
         try:
@@ -100,7 +103,6 @@ class _RtabmapAdapter:
         return None
 
 
-
 class SlamPi4Module(Module):
     """Pi4 SLAM module (RTAB-Map or stub backend).
 
@@ -140,7 +142,9 @@ class SlamPi4Module(Module):
                     adapter.init(db_path)
                     self._adapter = adapter
                     self.available = True
-                    context.set("slam_status", {"status": "ready", "backend": "rtabmap"})
+                    context.set(
+                        "slam_status", {"status": "ready", "backend": "rtabmap"}
+                    )
                     return
                 except Exception as exc:
                     logger.warning("RTAB-Map initialization failed: %s", exc)
@@ -153,7 +157,6 @@ class SlamPi4Module(Module):
         # Fallback to stub
         self.available = True
         context.set("slam_status", {"status": "ready", "backend": "stub"})
-
 
     def tick(self, context) -> None:
         if not self.available or not self.status.enabled:
@@ -172,9 +175,17 @@ class SlamPi4Module(Module):
         sensor = context.get("sensor_reading") or {}
         imu = None
         if isinstance(sensor, dict):
-            imu = {"acc": sensor.get("acc"), "gyro": sensor.get("gyro"), "timestamp": sensor.get("timestamp")}
+            imu = {
+                "acc": sensor.get("acc"),
+                "gyro": sensor.get("gyro"),
+                "timestamp": sensor.get("timestamp"),
+            }
         else:
-            imu = {"acc": getattr(sensor, "acc", None), "gyro": getattr(sensor, "gyro", None), "timestamp": getattr(sensor, "timestamp", None)}
+            imu = {
+                "acc": getattr(sensor, "acc", None),
+                "gyro": getattr(sensor, "gyro", None),
+                "timestamp": getattr(sensor, "timestamp", None),
+            }
 
         ts = None
         if imu and imu.get("timestamp"):
@@ -228,7 +239,9 @@ class SlamPi4Module(Module):
                 context.set("slam_trajectory", None)
 
             # Optionally export map to file with selectable format
-            map_export_interval = _safe_float(settings.get("map_export_interval_s", 0), 0.0)
+            map_export_interval = _safe_float(
+                settings.get("map_export_interval_s", 0), 0.0
+            )
             map_export_path = settings.get("map_export_path")
             map_export_format = (settings.get("map_export_format") or "json").lower()
             if map_export_interval > 0 and map_export_path:
@@ -240,28 +253,49 @@ class SlamPi4Module(Module):
                                 if map_export_format == "json":
                                     import json
 
-                                    with open(map_export_path, "w", encoding="utf-8") as fh:
-                                        fh.write(json.dumps({"exported_at": now, "map": md}))
+                                    with open(
+                                        map_export_path, "w", encoding="utf-8"
+                                    ) as fh:
+                                        fh.write(
+                                            json.dumps({"exported_at": now, "map": md})
+                                        )
                                 elif map_export_format == "ply":
                                     # Expect md to be iterable of [x,y,z] points
                                     try:
-                                        with open(map_export_path, "w", encoding="utf-8") as fh:
+                                        with open(
+                                            map_export_path, "w", encoding="utf-8"
+                                        ) as fh:
                                             pts = list(md)
-                                            fh.write("ply\nformat ascii 1.0\nelement vertex %d\nproperty float x\nproperty float y\nproperty float z\nend_header\n" % len(pts))
+                                            fh.write(
+                                                "ply\nformat ascii 1.0\nelement vertex %d\nproperty float x\nproperty float y\nproperty float z\nend_header\n"
+                                                % len(pts)
+                                            )
                                             for p in pts:
                                                 fh.write(f"{p[0]} {p[1]} {p[2]}\n")
                                     except Exception:
-                                        logger.debug("Failed to export PLY; falling back to JSON")
+                                        logger.debug(
+                                            "Failed to export PLY; falling back to JSON"
+                                        )
                                         import json
 
-                                        with open(map_export_path, "w", encoding="utf-8") as fh:
-                                            fh.write(json.dumps({"exported_at": now, "map": md}))
+                                        with open(
+                                            map_export_path, "w", encoding="utf-8"
+                                        ) as fh:
+                                            fh.write(
+                                                json.dumps(
+                                                    {"exported_at": now, "map": md}
+                                                )
+                                            )
                                 else:
                                     # Unknown format: default to JSON
                                     import json
 
-                                    with open(map_export_path, "w", encoding="utf-8") as fh:
-                                        fh.write(json.dumps({"exported_at": now, "map": md}))
+                                    with open(
+                                        map_export_path, "w", encoding="utf-8"
+                                    ) as fh:
+                                        fh.write(
+                                            json.dumps({"exported_at": now, "map": md})
+                                        )
                                 self._last_map_export_ts = now
                             except Exception as exc:
                                 logger.debug("Failed to write map export: %s", exc)
@@ -271,7 +305,10 @@ class SlamPi4Module(Module):
             self._update_stub(context, settings, imu)
 
         context.set("slam_pose", self._pose)
-        context.set("slam_status", {"status": "running", "backend": ("rtabmap" if self._adapter else "stub")})
+        context.set(
+            "slam_status",
+            {"status": "running", "backend": ("rtabmap" if self._adapter else "stub")},
+        )
         self._emit_nav_hint(context, settings)
         self._last_ts = now
 
@@ -281,7 +318,9 @@ class SlamPi4Module(Module):
         if imu:
             gyro = imu.get("gyro")
         if isinstance(gyro, (list, tuple)) and len(gyro) >= 3:
-            yaw += _safe_float(gyro[2], 0.0) * _safe_float(settings.get("gyro_scale", 0.0), 0.0)
+            yaw += _safe_float(gyro[2], 0.0) * _safe_float(
+                settings.get("gyro_scale", 0.0), 0.0
+            )
         self._pose = {
             "x": float(self._pose.get("x", 0.0)),
             "y": float(self._pose.get("y", 0.0)),

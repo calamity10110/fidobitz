@@ -1,4 +1,3 @@
-
 from houndmind_ai.core.config import _deep_merge
 
 
@@ -66,35 +65,9 @@ def test_deep_merge_empty_overrides():
 
 
 def test_deep_merge_multiple_nesting_levels():
-    target = {
-        "level1": {
-            "level2": {
-                "level3": {
-                    "a": 1,
-                    "b": 2
-                }
-            }
-        }
-    }
-    overrides = {
-        "level1": {
-            "level2": {
-                "level3": {
-                    "a": 10
-                },
-                "new_key": "hello"
-            }
-        }
-    }
+    target = {"level1": {"level2": {"level3": {"a": 1, "b": 2}}}}
+    overrides = {"level1": {"level2": {"level3": {"a": 10}, "new_key": "hello"}}}
     _deep_merge(target, overrides)
     assert target == {
-        "level1": {
-            "level2": {
-                "level3": {
-                    "a": 10,
-                    "b": 2
-                },
-                "new_key": "hello"
-            }
-        }
+        "level1": {"level2": {"level3": {"a": 10, "b": 2}, "new_key": "hello"}}
     }

@@ -160,7 +160,9 @@ class MotorModule(Module):
         orientation = settings.get("orientation", {})
         perf = settings.get("performance", {})
         safe_mode = bool(perf.get("safe_mode_enabled", False))
-        degrees_per_step = _safe_float(movement.get("turn_degrees_per_step", 15.0), 15.0)
+        degrees_per_step = _safe_float(
+            movement.get("turn_degrees_per_step", 15.0), 15.0
+        )
         if degrees is None:
             degrees = degrees_per_step * steps
         degrees = _safe_float(degrees, degrees_per_step * steps)
@@ -248,7 +250,9 @@ class MotorModule(Module):
         speed = _safe_int(settings.get("head_turn_follow_speed", 70), 70)
         hold_s = _safe_float(settings.get("head_turn_follow_hold_s", 0.4), 0.4)
         respect_scanning = bool(settings.get("head_turn_follow_respect_scanning", True))
-        scan_block_s = _safe_float(settings.get("head_turn_follow_scan_block_s", 0.4), 0.4)
+        scan_block_s = _safe_float(
+            settings.get("head_turn_follow_scan_block_s", 0.4), 0.4
+        )
         respect_attention = bool(
             settings.get("head_turn_follow_respect_attention", True)
         )
@@ -284,12 +288,16 @@ class MotorModule(Module):
         blocked = False
         if scan_block_s > 0:
             scan_reading = context.get("scan_reading")
-            scan_ts = _safe_float(getattr(scan_reading, "timestamp", 0.0) if scan_reading else 0.0, 0.0)
+            scan_ts = _safe_float(
+                getattr(scan_reading, "timestamp", 0.0) if scan_reading else 0.0, 0.0
+            )
             blocked = blocked or (time.time() - scan_ts) < max(0.0, scan_block_s)
         if attention_block_s > 0:
             attention_ts = context.get("attention_active_ts")
             try:
-                attention_ts = _safe_float(attention_ts, 0.0) if attention_ts is not None else 0.0
+                attention_ts = (
+                    _safe_float(attention_ts, 0.0) if attention_ts is not None else 0.0
+                )
             except Exception:
                 attention_ts = 0.0
             blocked = blocked or (time.time() - attention_ts) < max(

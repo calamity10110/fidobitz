@@ -52,7 +52,11 @@ def test_setup_logging_creates_handlers_and_injects_context(tmp_path):
         context_filter.set_context({"device_id": "new-device", "runtime_tick": 123})
         logger.info("second")
         # Read last non-empty line
-        lines = [line for line in log_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+        lines = [
+            line
+            for line in log_file.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
         last = json.loads(lines[-1])
         assert last.get("device_id") == "new-device"
         assert last.get("runtime_tick") == 123

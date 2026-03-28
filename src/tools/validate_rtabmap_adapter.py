@@ -18,25 +18,30 @@ import sys
 import time
 import importlib
 
+
 def main():
     parser = argparse.ArgumentParser(description="Validate RTAB-Map adapter")
-    parser.add_argument("--camera", type=int, help="camera index to capture frames from", default=None)
-    parser.add_argument("--image", type=str, help="single image file to use as frame", default=None)
+    parser.add_argument(
+        "--camera", type=int, help="camera index to capture frames from", default=None
+    )
+    parser.add_argument(
+        "--image", type=str, help="single image file to use as frame", default=None
+    )
     parser.add_argument("--count", type=int, default=5, help="number of frames to send")
     args = parser.parse_args()
 
     try:
-        mod = importlib.import_module('houndmind_ai.optional.slam_pi4')
+        mod = importlib.import_module("houndmind_ai.optional.slam_pi4")
     except Exception as exc:
         print("Failed to import slam_pi4 module:", exc)
         sys.exit(2)
 
-    Adapter = getattr(mod, '_RtabmapAdapter', None)
+    Adapter = getattr(mod, "_RtabmapAdapter", None)
     if Adapter is None:
         print("Adapter class not found in slam_pi4.py")
         sys.exit(2)
 
-    adapter = Adapter({'params': {}})
+    adapter = Adapter({"params": {}})
 
     print("Checking for RTAB-Map Python bindings...")
     if not adapter.available():
@@ -45,7 +50,7 @@ def main():
 
     print("Initializing adapter...")
     try:
-        adapter.init('rtabmap_test.db')
+        adapter.init("rtabmap_test.db")
     except Exception as exc:
         print("Adapter.init failed:", exc)
         # Continue — some bindings may not need explicit init
@@ -54,25 +59,30 @@ def main():
     try:
         import cv2
         import numpy as np
+
         if args.camera is not None:
             cap = cv2.VideoCapture(args.camera)
             if not cap.isOpened():
                 print("Failed to open camera index", args.camera)
                 cap = None
             else:
+
                 def supplier():
                     ret, f = cap.read()
                     if not ret:
                         return None
                     return f
+
                 frame_supplier = supplier
         if frame_supplier is None and args.image is not None:
             img = cv2.imread(args.image)
             if img is None:
                 print("Failed to read image", args.image)
             else:
+
                 def supplier_img():
                     return img
+
                 frame_supplier = supplier_img
     except Exception:
         # OpenCV not installed — generate a synthetic frame
@@ -81,12 +91,16 @@ def main():
     if frame_supplier is None:
         try:
             import numpy as np
+
             def synth():
-                return (np.zeros((480,640,3), dtype='uint8'))
+                return np.zeros((480, 640, 3), dtype="uint8")
+
             frame_supplier = synth
         except Exception:
+
             def supplier_none():
                 return None
+
             frame_supplier = supplier_none
 
     print("Sending frames to adapter...")
@@ -94,7 +108,7 @@ def main():
         f = frame_supplier()
         try:
             adapter.process(f, imu=None, timestamp=time.time())
-            print(f"Processed frame {i+1}")
+            print(f"Processed frame {i + 1}")
         except Exception as exc:
             print(f"adapter.process raised: {exc}")
 
@@ -117,7 +131,10 @@ def main():
     except Exception as exc:
         print("get_trajectory error:", exc)
 
-    print("Validation complete — if any calls failed, adapt `_RtabmapAdapter` in `slam_pi4.py` accordingly.")
+    print(
+        "Validation complete — if any calls failed, adapt `_RtabmapAdapter` in `slam_pi4.py` accordingly."
+    )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

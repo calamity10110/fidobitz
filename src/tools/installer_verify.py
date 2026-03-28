@@ -61,7 +61,9 @@ def main():
     args = parser.parse_args()
     # The verifier file lives in src/tools/. The repository root is two levels up.
     repo_root = Path(__file__).resolve().parents[2]
-    req = repo_root / ("requirements.txt" if args.preset == "full" else "requirements-lite.txt")
+    req = repo_root / (
+        "requirements.txt" if args.preset == "full" else "requirements-lite.txt"
+    )
     print("HoundMind installer verification")
     py_ok = check_python(3, 10)
     # Warn if running on newer Python where wheels may be missing (Trixie, etc.)

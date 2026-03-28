@@ -5,6 +5,7 @@ Usage:
 
 If no output path is provided the script will create `logs/support_bundle_{timestamp}.zip`.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,9 @@ def repo_root() -> Path:
 
 def gather_git_commit(root: Path) -> str | None:
     try:
-        out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, stderr=subprocess.DEVNULL)
+        out = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=root, stderr=subprocess.DEVNULL
+        )
         return out.decode().strip()
     except Exception:
         logger.exception("Failed to resolve git commit")
@@ -37,12 +40,17 @@ def collect(bundle_path: Path) -> None:
     root = repo_root()
     logs = root / "logs"
     config = root / "config" / "settings.jsonc"
+
     # try to gather a trace id for correlation: prefer env var, then scan recent logs
     def _find_trace_in_logs(logs_dir: Path) -> str | None:
         if not logs_dir.exists():
             return None
         # check latest files first
-        files = sorted([p for p in logs_dir.iterdir() if p.is_file()], key=lambda p: p.stat().st_mtime, reverse=True)
+        files = sorted(
+            [p for p in logs_dir.iterdir() if p.is_file()],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
         trace_re = re.compile(r'"trace_id"\s*:\s*"([^"]+)"')
         for f in files:
             try:
@@ -99,10 +107,16 @@ def collect(bundle_path: Path) -> None:
                     if size_mb < 2:
                         z.write(f, arcname=str(Path("logs") / f.name))
                     else:
-                        tail = f.read_text(encoding="utf-8", errors="replace").splitlines()[-2000:]
-                        z.writestr(str(Path("logs") / (f.name + ".tail.txt")), "\n".join(tail))
+                        tail = f.read_text(
+                            encoding="utf-8", errors="replace"
+                        ).splitlines()[-2000:]
+                        z.writestr(
+                            str(Path("logs") / (f.name + ".tail.txt")), "\n".join(tail)
+                        )
                 except Exception:
-                    logger.exception("Failed to include log file in support bundle: %s", f)
+                    logger.exception(
+                        "Failed to include log file in support bundle: %s", f
+                    )
                     # best-effort fallback
                     try:
                         z.write(f, arcname=str(Path("logs") / f.name))
@@ -121,9 +135,15 @@ def main(argv: list[str] | None = None) -> int:
     if argv:
         out = Path(argv[0])
         if out.is_dir():
-            out = out / f"support_bundle_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.zip"
+            out = (
+                out
+                / f"support_bundle_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.zip"
+            )
     else:
-        out = default_dir / f"support_bundle_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.zip"
+        out = (
+            default_dir
+            / f"support_bundle_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.zip"
+        )
 
     try:
         collect(out)

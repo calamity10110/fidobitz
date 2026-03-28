@@ -1,5 +1,6 @@
 import secrets
 
+
 def get_shared_auth_token(context, settings: dict) -> str:
     """Gets the auth token from settings or context, or generates a shared one."""
     token = settings.get("auth_token")

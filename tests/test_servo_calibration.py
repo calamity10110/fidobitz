@@ -1,10 +1,15 @@
 from unittest.mock import MagicMock
 
-from houndmind_ai.calibration.servo_calibration import apply_servo_offsets, collect_servo_defaults
+from houndmind_ai.calibration.servo_calibration import (
+    apply_servo_offsets,
+    collect_servo_defaults,
+)
+
 
 def test_apply_servo_offsets_none_dog():
     # Should return early, not raise
     apply_servo_offsets(None, {"head_pan": 10.0})
+
 
 def test_apply_servo_offsets_empty():
     dog = MagicMock()
@@ -12,6 +17,7 @@ def test_apply_servo_offsets_empty():
     apply_servo_offsets(dog, None)
     apply_servo_offsets(dog, {})
     dog.set_servo_zero.assert_not_called()
+
 
 def test_apply_servo_offsets_with_set_servo_zero():
     dog = MagicMock()
@@ -26,6 +32,7 @@ def test_apply_servo_offsets_with_set_servo_zero():
     dog.set_servo_zero.assert_any_call("head_pan", 10.5)
     dog.set_servo_zero.assert_any_call("head_tilt", -5.0)
 
+
 def test_apply_servo_offsets_with_servos_dict():
     dog = MagicMock(spec=["servos"])
     mock_servo1 = MagicMock()
@@ -38,6 +45,7 @@ def test_apply_servo_offsets_with_servos_dict():
     assert mock_servo1.zero_offset == 10.5
     assert mock_servo2.zero_offset == -5.0
 
+
 def test_apply_servo_offsets_exception():
     dog = MagicMock()
     dog.set_servo_zero.side_effect = Exception("Test exception")
@@ -46,12 +54,15 @@ def test_apply_servo_offsets_exception():
     # This should log a warning but not raise the exception
     apply_servo_offsets(dog, offsets)
 
+
 def test_collect_servo_defaults_none_dog():
     assert collect_servo_defaults(None) == {}
+
 
 def test_collect_servo_defaults_get_servo_zero():
     dog = MagicMock()
     dog.servo_names = ["head_pan", "head_tilt", "unknown"]
+
     def mock_get_servo_zero(name):
         if name == "head_pan":
             return 10.5
@@ -64,6 +75,7 @@ def test_collect_servo_defaults_get_servo_zero():
     defaults = collect_servo_defaults(dog)
     assert defaults == {"head_pan": 10.5, "head_tilt": -5.0}
 
+
 def test_collect_servo_defaults_servos_dict():
     # Only supply servos dict, not get_servo_zero
     dog = MagicMock(spec=["servos"])
@@ -74,11 +86,16 @@ def test_collect_servo_defaults_servos_dict():
     mock_servo3 = MagicMock()
     del mock_servo3.zero_offset  # Missing attribute
 
-    dog.servos = {"head_pan": mock_servo1, "head_tilt": mock_servo2, "broken": mock_servo3}
+    dog.servos = {
+        "head_pan": mock_servo1,
+        "head_tilt": mock_servo2,
+        "broken": mock_servo3,
+    }
 
     defaults = collect_servo_defaults(dog)
     # The default returned value for broken should be 0.0 (per code getattr(s, 'zero_offset', 0.0))
     assert defaults == {"head_pan": 10.5, "head_tilt": -5.0, "broken": 0.0}
+
 
 def test_collect_servo_defaults_exceptions():
     dog = MagicMock()

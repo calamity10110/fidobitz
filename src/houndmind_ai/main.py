@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 def build_modules(config) -> list:
     module_configs = config.modules or {}
+
     # module_configs may be a dict (from JSON) or an object; normalize to dicts
     def cfg(name: str) -> dict:
         val = module_configs.get(name, {})

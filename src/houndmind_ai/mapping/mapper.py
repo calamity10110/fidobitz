@@ -20,6 +20,7 @@ def _build_trig_cache() -> dict[str, tuple[float, float]]:
         cache[f"{d}.0"] = (cos_val, sin_val)
     return cache
 
+
 class MappingModule(Module):
     """Lightweight mapping module with optional home map persistence.
 
@@ -159,7 +160,9 @@ class MappingModule(Module):
             mapping_state = context.get("mapping_state") or {"samples": []}
             self.save_home_map(mapping_state, settings)
 
-    def _ingest_into_grid(self, angles: dict, settings: dict, mapping_state: dict) -> None:
+    def _ingest_into_grid(
+        self, angles: dict, settings: dict, mapping_state: dict
+    ) -> None:
         if not isinstance(angles, dict) or not angles:
             return
         cell_size_cm = float(settings.get("cell_size_cm", 10.0))

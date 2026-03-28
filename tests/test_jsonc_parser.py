@@ -7,14 +7,14 @@ from houndmind_ai.core import config as cfg
 
 def test_load_jsonc_allows_comments_and_trailing_commas(tmp_path: Path):
     p = tmp_path / "settings.jsonc"
-    text = '''{
+    text = """{
         // This is a line comment
         "loop": {
             "tick_hz": 10,
             /* block comment */
             "max_cycles": 5,
         },
-    }'''
+    }"""
     p.write_text(text, encoding="utf-8")
     data = cfg._load_jsonc(p)
     assert isinstance(data, dict)

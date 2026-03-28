@@ -5,7 +5,14 @@ import random
 
 try:
     # Prefer real actions if available
-    from action import wag_tail, stop_and_stand, bark, wave_paw, turn_left_medium, turn_right_medium  # type: ignore
+    from action import (
+        wag_tail,
+        stop_and_stand,
+        bark,
+        wave_paw,
+        turn_left_medium,
+        turn_right_medium,
+    )  # type: ignore
 except Exception:
     # Fallback stubs so this archived script doesn't error if action.py is missing
     def wag_tail():

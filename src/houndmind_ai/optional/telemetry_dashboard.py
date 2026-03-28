@@ -21,6 +21,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
     A class attribute `module` is dynamically attached to the class
     before instantiation by ThreadingHTTPServer.
     """
+
     module: "TelemetryDashboardModule"
 
     def _send_json(self, payload: dict, status: int = 200) -> None:
@@ -35,6 +36,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
 
     def _auth_ok(self, params: dict) -> bool:
         import secrets
+
         token = getattr(self.module, "_auth_token", None)
         if not token:
             return False
@@ -121,17 +123,22 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
 
     def _handle_dashboard_html(self) -> None:
         # Inject configured camera path into the dashboard HTML
-        html = _DASHBOARD_HTML.replace(
-            "{{CAMERA_PATH}}", str(getattr(self.module, "_camera_path", "/camera"))
-        ).replace(
-            "{{AUTH_TOKEN}}", str(getattr(self.module, "_auth_token", ""))
-        ).encode("utf-8")
+        html = (
+            _DASHBOARD_HTML.replace(
+                "{{CAMERA_PATH}}", str(getattr(self.module, "_camera_path", "/camera"))
+            )
+            .replace("{{AUTH_TOKEN}}", str(getattr(self.module, "_auth_token", "")))
+            .encode("utf-8")
+        )
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.send_header("Content-Length", str(len(html)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline'; img-src 'self' data:;")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self' 'unsafe-inline'; img-src 'self' data:;",
+        )
         self.end_headers()
         self.wfile.write(html)
 
@@ -220,6 +227,7 @@ class TelemetryDashboardModule(Module):
         try:
             import tempfile
             from pathlib import Path
+
             # Import the collect function from tools
             from tools.collect_support_bundle import collect
 
@@ -334,14 +342,18 @@ class TelemetryDashboardModule(Module):
         # must include this token in `X-Auth-Token` header or `auth_token` query.
         self._auth_token = get_shared_auth_token(context, http_settings)
         if self._auth_token == context.get("shared_auth_token"):
-            logger.debug("No auth_token configured for telemetry dashboard; using generated shared session token.")
+            logger.debug(
+                "No auth_token configured for telemetry dashboard; using generated shared session token."
+            )
             # Only print it if it's the first time
             if context.get("shared_auth_token_printed") is not True:
                 print(f"Generated shared session token: {self._auth_token}")
                 context.set("shared_auth_token_printed", True)
 
         if host == "0.0.0.0":
-            logger.warning("Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
+            logger.warning(
+                "Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+            )
 
         # Create a subclass of our handler that has this module instance bound to it
         class BoundHandler(TelemetryHTTPHandler):

@@ -14,10 +14,15 @@ def test_grid_ingestion_respects_toggle():
     # Tick should not populate mapping_state['grid'] when disabled
     module.tick(ctx)
     ms = ctx.get("mapping_state") or {}
-    assert "grid" not in ms or not ms.get("grid"), "Grid should not be present when disabled"
+    assert "grid" not in ms or not ms.get("grid"), (
+        "Grid should not be present when disabled"
+    )
 
     # Now enable grid and tick
-    ctx.set("settings", {"mapping": {"grid_enabled": True, "cell_size_cm": 10, "grid_size": [20,20]}})
+    ctx.set(
+        "settings",
+        {"mapping": {"grid_enabled": True, "cell_size_cm": 10, "grid_size": [20, 20]}},
+    )
     module.tick(ctx)
     ms = ctx.get("mapping_state") or {}
     assert isinstance(ms.get("grid"), dict), "Grid should be created when enabled"

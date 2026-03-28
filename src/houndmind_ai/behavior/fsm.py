@@ -81,7 +81,9 @@ class BehaviorModule(Module):
                     # treat as no touch when habituated
                     touch = "N"
                     suppressed = True
-                    context.set("behavior_habituation", {"stimulus": "touch", "count": cnt})
+                    context.set(
+                        "behavior_habituation", {"stimulus": "touch", "count": cnt}
+                    )
             if sound:
                 cnt = self._stim_counts.get("sound", 0) + 1
                 self._stim_counts["sound"] = cnt
@@ -89,7 +91,9 @@ class BehaviorModule(Module):
                 if cnt >= threshold:
                     sound = False
                     suppressed = True
-                    context.set("behavior_habituation", {"stimulus": "sound", "count": cnt})
+                    context.set(
+                        "behavior_habituation", {"stimulus": "sound", "count": cnt}
+                    )
 
             # If we recovered from habituation (quiet period elapsed), clear
             # last action so the next matching stimulus will be emitted again.
@@ -322,9 +326,7 @@ class BehaviorModule(Module):
                     else idle_action
                 )
 
-        transition_guard_enabled = bool(
-            settings.get("transition_guard_enabled", False)
-        )
+        transition_guard_enabled = bool(settings.get("transition_guard_enabled", False))
         if transition_guard_enabled:
             immediate_states = settings.get(
                 "transition_immediate_states", ["avoiding", "alert"]
@@ -457,25 +459,29 @@ class BehaviorModule(Module):
             return self.library.pick_avoid_action() if self.library else avoid_action
         if state == BehaviorState.ALERT:
             if touch != "N":
-                return self.library.pick_alert_action() if self.library else touch_action
+                return (
+                    self.library.pick_alert_action() if self.library else touch_action
+                )
             if sound:
-                return self.library.pick_alert_action() if self.library else sound_action
+                return (
+                    self.library.pick_alert_action() if self.library else sound_action
+                )
             return self.library.pick_alert_action() if self.library else sound_action
         if state == BehaviorState.PATROL:
             return self.library.pick_patrol_action() if self.library else patrol_action
         if state == BehaviorState.EXPLORE:
-            return self.library.pick_explore_action() if self.library else explore_action
+            return (
+                self.library.pick_explore_action() if self.library else explore_action
+            )
         if state == BehaviorState.INTERACT:
-            return self.library.pick_interact_action() if self.library else interact_action
+            return (
+                self.library.pick_interact_action() if self.library else interact_action
+            )
         if state == BehaviorState.PLAY:
             return self.library.pick_play_action() if self.library else "stretch"
         if state == BehaviorState.REST:
             return self.library.pick_rest_action() if self.library else "lie"
-        return (
-            self._select_idle_behavior(settings)
-            if self.library
-            else idle_action
-        )
+        return self._select_idle_behavior(settings) if self.library else idle_action
 
     def _select_autonomy_mode(self, settings, context) -> str:
         now = time.time()

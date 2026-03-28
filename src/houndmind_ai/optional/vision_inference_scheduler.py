@@ -12,12 +12,19 @@ import queue
 import time
 from typing import Callable, Any, Optional
 
+
 class VisionInferenceScheduler:
     """
     Schedules vision inference jobs in a background thread or process.
     Accepts frames, runs inference, and returns results via callback or queue.
     """
-    def __init__(self, inference_fn: Callable[[Any], Any], result_callback: Optional[Callable[[Any], None]] = None, max_queue_size: int = 4):
+
+    def __init__(
+        self,
+        inference_fn: Callable[[Any], Any],
+        result_callback: Optional[Callable[[Any], None]] = None,
+        max_queue_size: int = 4,
+    ):
         self.inference_fn = inference_fn
         self.result_callback = result_callback
         self.frame_queue: queue.Queue[Any] = queue.Queue(maxsize=max_queue_size)
@@ -60,10 +67,12 @@ class VisionInferenceScheduler:
             else:
                 self.result_queue.put(result)
 
+
 # Example usage (to be replaced with actual vision model):
 def dummy_inference(frame):
     time.sleep(0.05)  # Simulate inference latency
-    return {'frame_id': id(frame), 'result': 'ok'}
+    return {"frame_id": id(frame), "result": "ok"}
+
 
 if __name__ == "__main__":
     scheduler = VisionInferenceScheduler(dummy_inference)
