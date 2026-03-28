@@ -10,8 +10,18 @@ import importlib
 # we mock out the missing heavy dependencies in sys.modules.
 # We only mock them if they are not already installed to avoid breaking other tests.
 _heavy_dependencies = [
-    'numpy', 'cv2', 'scipy.spatial.transform', 'scipy.spatial', 'scipy',
-    'face_recognition', 'SpeechRecognition', 'pyaudio', 'sounddevice', 'pyttsx3', 'vosk', 'rtabmap'
+    "numpy",
+    "cv2",
+    "scipy.spatial.transform",
+    "scipy.spatial",
+    "scipy",
+    "face_recognition",
+    "SpeechRecognition",
+    "pyaudio",
+    "sounddevice",
+    "pyttsx3",
+    "vosk",
+    "rtabmap",
 ]
 
 _mocked_modules = {}
@@ -28,6 +38,7 @@ if _mocked_modules:
 
 from houndmind_ai.main import main, build_modules  # noqa: E402
 from houndmind_ai.mapping import default_path_planning_hook  # noqa: E402
+
 
 class TestMain(unittest.TestCase):
     @patch("houndmind_ai.main.build_modules")
@@ -128,25 +139,46 @@ class TestMain(unittest.TestCase):
         with patch.object(sys, "argv", ["houndmind"]):
             main()
 
-        mock_context.set.assert_any_call("path_planning_hook", default_path_planning_hook)
+        mock_context.set.assert_any_call(
+            "path_planning_hook", default_path_planning_hook
+        )
 
     def test_build_modules(self):
         """Test build_modules returns correct modules passing config values."""
         mock_config = MagicMock()
         mock_config.modules = {
             "hal_sensors": {"enabled": True},
-            "perception": {"some_param": "value"}
+            "perception": {"some_param": "value"},
         }
 
         module_names = [
-            "SensorModule", "MotorModule", "PerceptionModule", "ScanningModule",
-            "OrientationModule", "CalibrationModule", "MappingModule",
-            "LocalPlannerModule", "ObstacleAvoidanceModule", "BehaviorModule",
-            "HabituationModule", "AttentionModule", "EventLoggerModule",
-            "LedManagerModule", "HealthMonitorModule", "ServiceWatchdogModule",
-            "WatchdogModule", "BalanceModule", "SafetyModule", "EnergyEmotionModule",
-            "VisionModule", "VisionPi4Module", "VoiceModule", "FaceRecognitionModule",
-            "SemanticLabelerModule", "SlamPi4Module", "TelemetryDashboardModule"
+            "SensorModule",
+            "MotorModule",
+            "PerceptionModule",
+            "ScanningModule",
+            "OrientationModule",
+            "CalibrationModule",
+            "MappingModule",
+            "LocalPlannerModule",
+            "ObstacleAvoidanceModule",
+            "BehaviorModule",
+            "HabituationModule",
+            "AttentionModule",
+            "EventLoggerModule",
+            "LedManagerModule",
+            "HealthMonitorModule",
+            "ServiceWatchdogModule",
+            "WatchdogModule",
+            "BalanceModule",
+            "SafetyModule",
+            "EnergyEmotionModule",
+            "VisionModule",
+            "VisionPi4Module",
+            "VoiceModule",
+            "FaceRecognitionModule",
+            "SemanticLabelerModule",
+            "SlamPi4Module",
+            "TelemetryDashboardModule",
         ]
 
         patchers = []
@@ -162,13 +194,18 @@ class TestMain(unittest.TestCase):
 
             self.assertEqual(len(modules), len(module_names))
 
-            mocked_modules["SensorModule"].assert_called_once_with("hal_sensors", enabled=True)
-            mocked_modules["PerceptionModule"].assert_called_once_with("perception", some_param="value")
+            mocked_modules["SensorModule"].assert_called_once_with(
+                "hal_sensors", enabled=True
+            )
+            mocked_modules["PerceptionModule"].assert_called_once_with(
+                "perception", some_param="value"
+            )
             mocked_modules["MotorModule"].assert_called_once_with("hal_motors")
 
         finally:
             for p in patchers:
                 p.stop()
+
 
 if __name__ == "__main__":
     unittest.main()

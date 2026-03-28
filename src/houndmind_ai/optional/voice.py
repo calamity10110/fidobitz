@@ -164,7 +164,9 @@ class VoiceModule(Module):
         handler = context.get("voice_question_handler")
         try:
             # If it's a question (ends with ?) or handler is present, forward
-            if (isinstance(text, str) and text.strip().endswith("?")) or callable(handler):
+            if (isinstance(text, str) and text.strip().endswith("?")) or callable(
+                handler
+            ):
                 if callable(handler):
                     try:
                         resp = handler(text)
@@ -217,11 +219,16 @@ class VoiceModule(Module):
         self._auth_token = http_settings.get("auth_token")
         if not self._auth_token:
             self._auth_token = secrets.token_urlsafe(32)
-            logger.debug("No auth_token configured for voice server; generated a secure session token: %s", self._auth_token)
+            logger.debug(
+                "No auth_token configured for voice server; generated a secure session token: %s",
+                self._auth_token,
+            )
             print(f"Voice server generated session token: {self._auth_token}")
 
         if host == "0.0.0.0":
-            logger.warning("Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token")
+            logger.warning(
+                "Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+            )
 
         module = self
 
@@ -370,7 +377,13 @@ class VoiceModule(Module):
                     try:
                         model = Model(model_path)
                         pa = pyaudio.PyAudio()
-                        stream = pa.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
+                        stream = pa.open(
+                            format=pyaudio.paInt16,
+                            channels=1,
+                            rate=16000,
+                            input=True,
+                            frames_per_buffer=8000,
+                        )
                         stream.start_stream()
                         rec = KaldiRecognizer(model, 16000)
                         logger.info("VOSK STT started")

@@ -155,15 +155,16 @@ def test_write_jsonl_failure():
     event = {"key": "value"}
     settings = {"event_log_path": "test.jsonl"}
 
-    with patch("pathlib.Path.is_absolute", return_value=True), \
-         patch("pathlib.Path.open", side_effect=OSError("Disk full")), \
-         patch("pathlib.Path.mkdir"), \
-         patch("houndmind_ai.logging.event_logger.logger.warning") as m_warning:
+    with (
+        patch("pathlib.Path.is_absolute", return_value=True),
+        patch("pathlib.Path.open", side_effect=OSError("Disk full")),
+        patch("pathlib.Path.mkdir"),
+        patch("houndmind_ai.logging.event_logger.logger.warning") as m_warning,
+    ):
         # Should not raise exception
         logger._write_jsonl(event, settings)
         m_warning.assert_called_once()
         assert "Failed to write event log" in m_warning.call_args[0][0]
-
 
 
 def test_tick_disabled():
@@ -179,10 +180,15 @@ def test_tick_disabled():
 def test_tick_rate_limiting():
     logger = EventLoggerModule("test_logger")
     ctx = DummyContext()
-    ctx.set("settings", {"logging": {"event_log_enabled": True, "event_log_interval_s": 1.0}})
+    ctx.set(
+        "settings",
+        {"logging": {"event_log_enabled": True, "event_log_interval_s": 1.0}},
+    )
 
-    with patch("time.time", side_effect=[100.0, 100.5, 101.1, 101.1, 101.1]), \
-         patch.object(logger, "_append_event") as m_append:
+    with (
+        patch("time.time", side_effect=[100.0, 100.5, 101.1, 101.1, 101.1]),
+        patch.object(logger, "_append_event") as m_append,
+    ):
         # First tick should log
         logger.tick(ctx)
         assert m_append.call_count == 1
@@ -203,7 +209,10 @@ def test_tick_rate_limiting():
 def test_tick_duplicate_snapshot():
     logger = EventLoggerModule("test_logger")
     ctx = DummyContext()
-    ctx.set("settings", {"logging": {"event_log_enabled": True, "event_log_interval_s": 0.0}})
+    ctx.set(
+        "settings",
+        {"logging": {"event_log_enabled": True, "event_log_interval_s": 0.0}},
+    )
     ctx.set("behavior_action", "idle")
 
     with patch.object(logger, "_append_event") as m_append:
@@ -226,7 +235,10 @@ def test_tick_duplicate_snapshot():
 def test_tick_data_capture():
     logger = EventLoggerModule("test_logger")
     ctx = DummyContext()
-    ctx.set("settings", {"logging": {"event_log_enabled": True, "event_log_interval_s": 0.0}})
+    ctx.set(
+        "settings",
+        {"logging": {"event_log_enabled": True, "event_log_interval_s": 0.0}},
+    )
     ctx.set("behavior_action", "barking")
     ctx.set("module_statuses", {"brain": {"enabled": True}})
 
@@ -236,7 +248,11 @@ def test_tick_data_capture():
         event = m_append.call_args[0][0]
         assert event["type"] == "snapshot"
         assert event["behavior_action"] == "barking"
-        assert event["module_status_summary"] == {"enabled": 1, "disabled": 0, "errors": {}}
+        assert event["module_status_summary"] == {
+            "enabled": 1,
+            "disabled": 0,
+            "errors": {},
+        }
 
 
 def test_append_event_trimming():
@@ -284,6 +300,7 @@ def test_stop():
         m_write.assert_called_once()
         assert m_write.call_args[0][0]["type"] == "summary"
 
+
 def test_stop_no_file():
     logger = EventLoggerModule("test_logger")
     ctx = DummyContext()
@@ -294,6 +311,7 @@ def test_stop_no_file():
         logger.stop(ctx)
         m_write.assert_not_called()
 
+
 def test_append_event_with_file():
     logger = EventLoggerModule("test_logger")
     settings = {"event_log_file_enabled": True}
@@ -302,28 +320,34 @@ def test_append_event_with_file():
         logger._append_event({"n": 1}, settings)
         m_write.assert_called_once_with({"n": 1}, settings)
 
+
 def test_write_jsonl_absolute_path():
     logger = EventLoggerModule("test_logger")
     event = {"key": "value"}
     settings = {"event_log_path": "/tmp/absolute/test.jsonl"}
 
     m_open = mock_open()
-    with patch("pathlib.Path.open", m_open), \
-         patch("pathlib.Path.mkdir") as m_mkdir, \
-         patch("pathlib.Path.is_absolute", return_value=True):
-
+    with (
+        patch("pathlib.Path.open", m_open),
+        patch("pathlib.Path.mkdir") as m_mkdir,
+        patch("pathlib.Path.is_absolute", return_value=True),
+    ):
         logger._write_jsonl(event, settings)
 
         m_mkdir.assert_called()
         m_open.assert_called_once_with("a", encoding="utf-8")
         m_open().write.assert_called_once_with(json.dumps(event) + "\n")
 
+
 def test_tick_malformed_context():
     logger = EventLoggerModule("test_logger")
 
     # 1. Missing settings entirely
     ctx1 = DummyContext()
-    with patch("time.time", return_value=100.0), patch.object(logger, "_append_event") as m_append:
+    with (
+        patch("time.time", return_value=100.0),
+        patch.object(logger, "_append_event") as m_append,
+    ):
         logger.tick(ctx1)
         # Should execute without errors and proceed to log snapshot
         m_append.assert_called_once()
@@ -333,7 +357,10 @@ def test_tick_malformed_context():
     ctx2.data["settings"] = None
     # Change contexts to avoid duplicate snapshot check returning early
     ctx2.data["behavior_action"] = "action_2"
-    with patch("time.time", return_value=200.0), patch.object(logger, "_append_event") as m_append:
+    with (
+        patch("time.time", return_value=200.0),
+        patch.object(logger, "_append_event") as m_append,
+    ):
         logger.tick(ctx2)
         m_append.assert_called_once()
 
@@ -341,16 +368,23 @@ def test_tick_malformed_context():
     ctx3 = DummyContext()
     ctx3.data["settings"] = {"logging": None}
     ctx3.data["behavior_action"] = "action_3"
-    with patch("time.time", return_value=300.0), patch.object(logger, "_append_event") as m_append:
+    with (
+        patch("time.time", return_value=300.0),
+        patch.object(logger, "_append_event") as m_append,
+    ):
         logger.tick(ctx3)
         m_append.assert_called_once()
 
     # 4. Settings["logging"]["event_log_interval_s"] is malformed
     ctx4 = DummyContext()
     ctx4.data["settings"] = {"logging": {"event_log_interval_s": "not a float"}}
-    with patch("time.time", return_value=400.0), patch.object(logger, "_append_event") as m_append:
+    with (
+        patch("time.time", return_value=400.0),
+        patch.object(logger, "_append_event") as m_append,
+    ):
         with pytest.raises(ValueError):
             logger.tick(ctx4)
+
 
 def test_stop_malformed_context():
     logger = EventLoggerModule("test_logger")

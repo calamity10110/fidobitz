@@ -15,13 +15,22 @@ def test_personality_bias_high_curiosity():
     settings = {
         "autonomy_modes": ["idle", "patrol", "explore", "interact", "play", "rest"],
         # base equal weights
-        "autonomy_weights": {m: 1.0 for m in ["idle", "patrol", "explore", "interact", "play", "rest"]},
+        "autonomy_weights": {
+            m: 1.0 for m in ["idle", "patrol", "explore", "interact", "play", "rest"]
+        },
         "autonomy_interval_s": 0.0,
     }
 
     # High curiosity should bias toward "explore"
     context = {
-        "settings": {"personality": {"curiosity": 10.0, "sociability": 0.1, "activity": 0.1, "apply_to_autonomy": True}}
+        "settings": {
+            "personality": {
+                "curiosity": 10.0,
+                "sociability": 0.1,
+                "activity": 0.1,
+                "apply_to_autonomy": True,
+            }
+        }
     }
 
     explore_count = 0
@@ -34,4 +43,6 @@ def test_personality_bias_high_curiosity():
         if mode == "explore":
             explore_count += 1
 
-    assert explore_count > (trials * 0.7), f"explore_count={explore_count} not sufficiently dominant"
+    assert explore_count > (trials * 0.7), (
+        f"explore_count={explore_count} not sufficiently dominant"
+    )

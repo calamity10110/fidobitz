@@ -15,6 +15,7 @@ def _safe_float(val: Any, default: float) -> float:
     except (TypeError, ValueError):
         return default
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +55,9 @@ class AttentionModule(Module):
         if settings.get("respect_scanning", True):
             scan_reading = context.get("scan_reading")
             scan_ts = (
-                _safe_float(getattr(scan_reading, "timestamp", 0.0), 0.0) if scan_reading else 0.0
+                _safe_float(getattr(scan_reading, "timestamp", 0.0), 0.0)
+                if scan_reading
+                else 0.0
             )
             block_s = _safe_float(settings.get("scan_block_s", 0.4), 0.4)
             if now - scan_ts < block_s:

@@ -58,7 +58,12 @@ def example_autonomy_personality_demo() -> None:
     config.loop.max_cycles = 30
     # apply personality multipliers via settings dict
     settings = config.settings or {}
-    settings["personality"] = {"curiosity": 5.0, "sociability": 0.2, "activity": 0.5, "apply_to_autonomy": True}
+    settings["personality"] = {
+        "curiosity": 5.0,
+        "sociability": 0.2,
+        "activity": 0.5,
+        "apply_to_autonomy": True,
+    }
     config.settings = settings
     runtime = HoundMindRuntime(config, build_modules(config))
     runtime.run()
@@ -90,7 +95,14 @@ def example_autonomy_cycle_demo() -> None:
     settings = config.settings or {}
     # Bias weights so modes rotate visibly
     behavior = settings.get("behavior", {})
-    behavior["autonomy_weights"] = {"idle": 1.0, "patrol": 2.0, "explore": 3.0, "interact": 1.0, "play": 1.0, "rest": 0.5}
+    behavior["autonomy_weights"] = {
+        "idle": 1.0,
+        "patrol": 2.0,
+        "explore": 3.0,
+        "interact": 1.0,
+        "play": 1.0,
+        "rest": 0.5,
+    }
     settings["behavior"] = behavior
     config.settings = settings
     runtime = HoundMindRuntime(config, build_modules(config))
@@ -131,21 +143,27 @@ def example_scripted_habituation_demo() -> None:
     try:
         # Simulate a burst of 6 sound events spaced 0.3s apart
         for i in range(6):
-            runtime.context.set("perception", {"sound": True, "touch": "N", "obstacle": False})
+            runtime.context.set(
+                "perception", {"sound": True, "touch": "N", "obstacle": False}
+            )
             runtime.tick()
             # Print the last behavior action and any habituation flag
             action = runtime.context.get("behavior_action")
             hab_flag = runtime.context.get("behavior_habituation")
-            print(f"tick {i+1}: action={action} hab={hab_flag}")
+            print(f"tick {i + 1}: action={action} hab={hab_flag}")
             time.sleep(0.3)
 
         # Now wait quiet period for recovery and tick a few more times
         print("Waiting for recovery window...")
         time.sleep(float(hab.get("recovery_s", 3.0)) + 0.5)
         for i in range(3):
-            runtime.context.set("perception", {"sound": True, "touch": "N", "obstacle": False})
+            runtime.context.set(
+                "perception", {"sound": True, "touch": "N", "obstacle": False}
+            )
             runtime.tick()
-            print(f"recovery tick {i+1}: action={runtime.context.get('behavior_action')} hab={runtime.context.get('behavior_habituation')}")
+            print(
+                f"recovery tick {i + 1}: action={runtime.context.get('behavior_action')} hab={runtime.context.get('behavior_habituation')}"
+            )
             time.sleep(0.3)
     finally:
         runtime.stop()
@@ -176,10 +194,12 @@ def example_energy_demo() -> None:
         for i in range(20):
             # Inject a touch every 5 ticks
             touch = "T" if (i % 5 == 0) else "N"
-            runtime.context.set("perception", {"sound": False, "touch": touch, "obstacle": False})
+            runtime.context.set(
+                "perception", {"sound": False, "touch": touch, "obstacle": False}
+            )
             runtime.tick()
             energy_lvl = runtime.context.get("energy_level")
-            print(f"tick {i+1}: touch={touch} energy={energy_lvl}")
+            print(f"tick {i + 1}: touch={touch} energy={energy_lvl}")
             time.sleep(0.2)
     finally:
         runtime.stop()
@@ -283,7 +303,7 @@ def _run_by_arg(arg: str) -> int:
     if len(matches) > 1:
         print("Multiple matches, be more specific:")
         for i, (label, _) in matches:
-            print(f" {i+1}) {label}")
+            print(f" {i + 1}) {label}")
         return 2
 
     print("No matching example found.")
@@ -301,8 +321,12 @@ def main(argv: list[str] | None = None) -> int:
     """
     argv = list(argv or sys.argv[1:])
     parser = argparse.ArgumentParser(prog="pidog_examples")
-    parser.add_argument("run", nargs="?", help="index or name of example to run, or 'all' to run all")
-    parser.add_argument("--list", action="store_true", help="list available examples and exit")
+    parser.add_argument(
+        "run", nargs="?", help="index or name of example to run, or 'all' to run all"
+    )
+    parser.add_argument(
+        "--list", action="store_true", help="list available examples and exit"
+    )
     ns = parser.parse_args(argv)
 
     if ns.list:

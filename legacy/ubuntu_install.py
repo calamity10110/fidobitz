@@ -160,7 +160,9 @@ def install():
             print("Install dependencies with apt-get:")
 
             # get debian version
-            status, result = run_command("cat /etc/os-release | grep VERSION_ID | awk -F '=' '{print $2}' | sed 's/\"//g'")
+            status, result = run_command(
+                "cat /etc/os-release | grep VERSION_ID | awk -F '=' '{print $2}' | sed 's/\"//g'"
+            )
             try:
                 raspbian_version = int(result.strip())
             except ValueError:

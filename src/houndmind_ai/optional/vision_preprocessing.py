@@ -2,8 +2,10 @@
 Frame pre-processing pipeline for vision: resize, normalize, ROI selection.
 Configurable and hardware-friendly for Pi4 vision tasks.
 """
+
 import cv2
 import numpy as np
+
 
 class VisionPreprocessor:
     def __init__(self, config=None):
@@ -18,7 +20,7 @@ class VisionPreprocessor:
         # ROI selection
         if self.roi:
             x, y, w, h = self.roi
-            frame = frame[y:y+h, x:x+w]
+            frame = frame[y : y + h, x : x + w]
         # Resize
         frame = cv2.resize(frame, self.target_size, interpolation=cv2.INTER_LINEAR)
         # Normalize

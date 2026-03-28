@@ -33,12 +33,16 @@ def test_setup_logging_respects_config(tmp_path):
     assert root.level == logging.WARNING
 
     # Rotating file handler should be present and have the configured backupCount
-    file_h = next((h for h in root.handlers if getattr(h, "_houndmind_managed", False)), None)
+    file_h = next(
+        (h for h in root.handlers if getattr(h, "_houndmind_managed", False)), None
+    )
     assert file_h is not None, "Expected a managed RotatingFileHandler"
     assert getattr(file_h, "backupCount", None) == 3
 
     # Console handler should be present and set to DEBUG
-    console_h = next((h for h in root.handlers if getattr(h, "_houndmind_console", False)), None)
+    console_h = next(
+        (h for h in root.handlers if getattr(h, "_houndmind_console", False)), None
+    )
     assert console_h is not None, "Expected a managed console StreamHandler"
     assert console_h.level == logging.DEBUG
 

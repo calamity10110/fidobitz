@@ -153,7 +153,9 @@ class ScanningService:
                     reading = self.sweep_scan(angles)
                 self._latest = reading
                 self._history.append(reading)
-                max_len = max(1, _safe_int(self._settings.get("scan_history_size", 10), 10))
+                max_len = max(
+                    1, _safe_int(self._settings.get("scan_history_size", 10), 10)
+                )
                 if len(self._history) > max_len:
                     self._history = self._history[-max_len:]
                 for cb in list(self._callbacks):
@@ -162,15 +164,22 @@ class ScanningService:
                 logger.warning("Scanning loop failed: %s", exc)
             elapsed = time.time() - start
             interval = _safe_float(self._settings.get("scan_interval_s", 0.5), 0.5)
-            min_interval = _safe_float(self._settings.get("scan_interval_min_s", 0.2), 0.2)
-            max_interval = _safe_float(self._settings.get("scan_interval_max_s", 2.0), 2.0)
+            min_interval = _safe_float(
+                self._settings.get("scan_interval_min_s", 0.2), 0.2
+            )
+            max_interval = _safe_float(
+                self._settings.get("scan_interval_max_s", 2.0), 2.0
+            )
             if self._interval_override is not None:
                 interval = self._interval_override
             # Safe-mode override from settings.
             if self._settings.get("safe_mode_enabled", False):
                 interval = max(
                     interval,
-                    _safe_float(self._settings.get("safe_mode_scan_interval_s", interval), interval),
+                    _safe_float(
+                        self._settings.get("safe_mode_scan_interval_s", interval),
+                        interval,
+                    ),
                 )
             interval = min(max(interval, min_interval), max_interval)
             time.sleep(max(0.0, interval - elapsed))
@@ -338,7 +347,12 @@ def settings_continuous(context) -> bool:
 
     # If movement/navigation actions are currently active, enforce continuous
     # scanning to keep obstacle data fresh while walking/turning.
-    for key in ("safety_action", "watchdog_action", "navigation_action", "behavior_action"):
+    for key in (
+        "safety_action",
+        "watchdog_action",
+        "navigation_action",
+        "behavior_action",
+    ):
         action = context.get(key)
         if not action:
             continue

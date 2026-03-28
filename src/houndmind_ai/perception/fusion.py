@@ -12,6 +12,7 @@ def _safe_float(v: Any, default: float = 0.0) -> float:
     except Exception:
         return default
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +58,9 @@ class PerceptionModule(Module):
         # This is intentionally coarse — it emits a `pose_hint` into the
         # context for downstream modules to use as a soft localization cue.
         fusion_cfg = settings.get("fusion", {}) if isinstance(settings, dict) else {}
-        anchor_max_cm = _safe_float(fusion_cfg.get("fusion_anchor_distance_cm", 120), 120.0)
+        anchor_max_cm = _safe_float(
+            fusion_cfg.get("fusion_anchor_distance_cm", 120), 120.0
+        )
         min_conf = _safe_float(fusion_cfg.get("fusion_min_confidence", 0.3), 0.3)
 
         obstacle = False
@@ -90,7 +93,8 @@ class PerceptionModule(Module):
                         "heading_deg": _safe_float(heading, 0.0),
                         "confidence": min(
                             1.0,
-                            (anchor_max_cm - _safe_float(distance, 0.0)) / max(1.0, anchor_max_cm),
+                            (anchor_max_cm - _safe_float(distance, 0.0))
+                            / max(1.0, anchor_max_cm),
                         ),
                     }
                     # Apply min confidence filter.

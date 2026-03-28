@@ -6,7 +6,9 @@ def test_trace_id_present_in_snapshot():
     module = TelemetryDashboardModule("telemetry_dashboard", enabled=True)
     ctx = RuntimeContext()
     # Provide minimal settings to enable tick snapshots without HTTP server
-    ctx.set("settings", {"telemetry_dashboard": {"enabled": True, "snapshot_interval_s": 0}})
+    ctx.set(
+        "settings", {"telemetry_dashboard": {"enabled": True, "snapshot_interval_s": 0}}
+    )
     # Set a known trace id and a small performance payload
     ctx.set("trace_id", "trace-test-123")
     ctx.set("runtime_performance", {"tick_hz_target": 10})

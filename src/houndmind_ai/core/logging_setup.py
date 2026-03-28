@@ -9,14 +9,34 @@ from typing import Any, Dict, Optional
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
-            "timestamp": datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(
+                record.created, timezone.utc
+            ).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
         }
         # include any extra fields attached to the record
         for k, v in record.__dict__.items():
-            if k in ("name", "msg", "args", "levelname", "levelno", "pathname", "lineno", "exc_info", "exc_text", "stack_info", "created", "msecs", "relativeCreated", "thread", "threadName", "processName", "process"):
+            if k in (
+                "name",
+                "msg",
+                "args",
+                "levelname",
+                "levelno",
+                "pathname",
+                "lineno",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "created",
+                "msecs",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "processName",
+                "process",
+            ):
                 continue
 
             if isinstance(v, (str, int, float, bool, type(None))):
@@ -81,13 +101,19 @@ def setup_logging(config: Optional[Dict[str, Any]] = None) -> ContextFilter:
     has_managed = False
     has_console = False
     for h in root.handlers:
-        if isinstance(h, logging.handlers.RotatingFileHandler) and getattr(h, "_houndmind_managed", False):
+        if isinstance(h, logging.handlers.RotatingFileHandler) and getattr(
+            h, "_houndmind_managed", False
+        ):
             has_managed = True
-        if isinstance(h, logging.StreamHandler) and getattr(h, "_houndmind_console", False):
+        if isinstance(h, logging.StreamHandler) and getattr(
+            h, "_houndmind_console", False
+        ):
             has_console = True
 
     if not has_managed:
-        file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=backup_count)
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_file, maxBytes=10 * 1024 * 1024, backupCount=backup_count
+        )
         file_handler.setLevel(getattr(logging, level_name, logging.INFO))
         file_handler.setFormatter(JsonFormatter())
         # attach context filter directly to handler so formatted records include runtime context
@@ -99,7 +125,9 @@ def setup_logging(config: Optional[Dict[str, Any]] = None) -> ContextFilter:
     if not has_console:
         console = logging.StreamHandler()
         console.setLevel(getattr(logging, console_level_name, logging.INFO))
-        console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        console.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+        )
         # attach context filter to console as well for consistency
         console.addFilter(context_filter)
         setattr(console, "_houndmind_console", True)

@@ -175,16 +175,22 @@ class SensorService:
         )
 
     def _read_distance(self, now: float) -> tuple[float | None, bool]:
-        debounce_s = max(0.0, _safe_float(self._settings.get("distance_debounce_s", 0.0), 0.0))
+        debounce_s = max(
+            0.0, _safe_float(self._settings.get("distance_debounce_s", 0.0), 0.0)
+        )
         if debounce_s > 0 and self._last_distance is not None:
             if (now - self._last_distance_ts) < debounce_s:
                 return self._last_distance, True
         samples = max(1, _safe_int(self._settings.get("distance_samples", 3), 3))
-        delay = max(0.0, _safe_float(self._settings.get("distance_sample_delay_s", 0.03), 0.03))
+        delay = max(
+            0.0, _safe_float(self._settings.get("distance_sample_delay_s", 0.03), 0.03)
+        )
         min_cm = _safe_float(self._settings.get("distance_min_cm", 2), 2.0)
         max_cm = _safe_float(self._settings.get("distance_max_cm", 200), 200.0)
         use_median = bool(self._settings.get("distance_use_median", True))
-        outlier_z = _safe_float(self._settings.get("distance_outlier_reject_z", 0.0), 0.0)
+        outlier_z = _safe_float(
+            self._settings.get("distance_outlier_reject_z", 0.0), 0.0
+        )
         ema_alpha = _safe_float(self._settings.get("distance_ema_alpha", 0.0), 0.0)
 
         values: list[float] = []
@@ -238,7 +244,9 @@ class SensorService:
         return result, True
 
     def _read_touch(self, now: float) -> tuple[str, bool]:
-        debounce_s = max(0.0, _safe_float(self._settings.get("touch_debounce_s", 0.05), 0.05))
+        debounce_s = max(
+            0.0, _safe_float(self._settings.get("touch_debounce_s", 0.05), 0.05)
+        )
         try:
             raw = self._dog.dual_touch.read() or "N"
         except Exception:  # noqa: BLE001
@@ -274,16 +282,22 @@ class SensorService:
         try:
             acc_raw = self._dog.accData
             gyro_raw = self._dog.gyroData
-            acc = cast(Tuple[float, float, float], (
-                _safe_float(acc_raw[0], 0.0),
-                _safe_float(acc_raw[1], 0.0),
-                _safe_float(acc_raw[2], 0.0),
-            ))
-            gyro = cast(Tuple[float, float, float], (
-                _safe_float(gyro_raw[0], 0.0),
-                _safe_float(gyro_raw[1], 0.0),
-                _safe_float(gyro_raw[2], 0.0),
-            ))
+            acc = cast(
+                Tuple[float, float, float],
+                (
+                    _safe_float(acc_raw[0], 0.0),
+                    _safe_float(acc_raw[1], 0.0),
+                    _safe_float(acc_raw[2], 0.0),
+                ),
+            )
+            gyro = cast(
+                Tuple[float, float, float],
+                (
+                    _safe_float(gyro_raw[0], 0.0),
+                    _safe_float(gyro_raw[1], 0.0),
+                    _safe_float(gyro_raw[2], 0.0),
+                ),
+            )
         except Exception:  # noqa: BLE001
             logger.debug("IMU read failed", exc_info=True)
             return None, None, False
@@ -294,14 +308,20 @@ class SensorService:
             else:
                 self._acc_lpf = cast(
                     Tuple[float, float, float],
-                    tuple((1 - alpha) * prev + alpha * cur for prev, cur in zip(self._acc_lpf, acc)),
+                    tuple(
+                        (1 - alpha) * prev + alpha * cur
+                        for prev, cur in zip(self._acc_lpf, acc)
+                    ),
                 )
             if self._gyro_lpf is None:
                 self._gyro_lpf = cast(Tuple[float, float, float], gyro)
             else:
                 self._gyro_lpf = cast(
                     Tuple[float, float, float],
-                    tuple((1 - alpha) * prev + alpha * cur for prev, cur in zip(self._gyro_lpf, gyro)),
+                    tuple(
+                        (1 - alpha) * prev + alpha * cur
+                        for prev, cur in zip(self._gyro_lpf, gyro)
+                    ),
                 )
             acc = self._acc_lpf
             gyro = self._gyro_lpf
@@ -346,7 +366,9 @@ class SensorModule(Module):
                 "sensor_health",
                 {
                     "timestamp": latest.timestamp,
-                    "age_s": max(0.0, time.time() - _safe_float(latest.timestamp, time.time())),
+                    "age_s": max(
+                        0.0, time.time() - _safe_float(latest.timestamp, time.time())
+                    ),
                     "distance_valid": latest.distance_valid,
                     "touch_valid": latest.touch_valid,
                     "sound_valid": latest.sound_valid,
@@ -377,7 +399,9 @@ class SensorModule(Module):
             "sensor_health",
             {
                 "timestamp": reading.timestamp,
-                "age_s": max(0.0, time.time() - _safe_float(reading.timestamp, time.time())),
+                "age_s": max(
+                    0.0, time.time() - _safe_float(reading.timestamp, time.time())
+                ),
                 "distance_valid": reading.distance_valid,
                 "touch_valid": reading.touch_valid,
                 "sound_valid": reading.sound_valid,

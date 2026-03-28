@@ -1,6 +1,6 @@
 import re
 
-with open('src/houndmind_ai/optional/telemetry_dashboard.py', 'r') as f:
+with open("src/houndmind_ai/optional/telemetry_dashboard.py", "r") as f:
     content = f.read()
 
 new_html = """_DASHBOARD_HTML = \"\"\"
@@ -629,9 +629,9 @@ new_html = """_DASHBOARD_HTML = \"\"\"
 
 # Replace the HTML block inside the python file
 pattern = r'_DASHBOARD_HTML = """(.*?)"""'
-new_content = re.sub(pattern, new_html.replace('\\', '\\\\'), content, flags=re.DOTALL)
+new_content = re.sub(pattern, new_html.replace("\\", "\\\\"), content, flags=re.DOTALL)
 
-with open('src/houndmind_ai/optional/telemetry_dashboard.py', 'w') as f:
+with open("src/houndmind_ai/optional/telemetry_dashboard.py", "w") as f:
     f.write(new_content)
 
 print("Dashboard UI updated.")

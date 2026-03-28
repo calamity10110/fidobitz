@@ -19,7 +19,9 @@ def test_astar_simple():
 def test_mapping_module_uses_hook():
     ctx = RuntimeContext()
     # minimal settings with mapping enabled and a goal
-    settings = {"mapping": {"enabled": True, "path_planning_enabled": True, "goal": (2, 2)}}
+    settings = {
+        "mapping": {"enabled": True, "path_planning_enabled": True, "goal": (2, 2)}
+    }
     ctx.set("settings", settings)
 
     # create a small 3x3 grid with an obstacle
@@ -44,6 +46,7 @@ def test_mapping_module_uses_hook():
     assert plan.get("success") is True
     assert plan.get("path") and plan["path"][0] == (0, 0)
 
+
 def test_astar_start_is_goal():
     grid = [
         [0, 0],
@@ -51,6 +54,7 @@ def test_astar_start_is_goal():
     ]
     path = astar(grid, (0, 0), (0, 0))
     assert path == [(0, 0)]
+
 
 def test_astar_no_path():
     grid = [
@@ -61,6 +65,7 @@ def test_astar_no_path():
     path = astar(grid, (0, 0), (2, 0))
     assert path == []
 
+
 def test_astar_start_out_of_bounds():
     grid = [
         [0, 0],
@@ -68,6 +73,7 @@ def test_astar_start_out_of_bounds():
     ]
     path = astar(grid, (-1, 0), (0, 0))
     assert path == []
+
 
 def test_astar_goal_out_of_bounds():
     grid = [
@@ -77,6 +83,7 @@ def test_astar_goal_out_of_bounds():
     path = astar(grid, (0, 0), (2, 0))
     assert path == []
 
+
 def test_astar_start_is_obstacle():
     grid = [
         [1, 0],
@@ -85,6 +92,7 @@ def test_astar_start_is_obstacle():
     path = astar(grid, (0, 0), (1, 1))
     assert path == []
 
+
 def test_astar_goal_is_obstacle():
     grid = [
         [0, 0],
@@ -92,6 +100,7 @@ def test_astar_goal_is_obstacle():
     ]
     path = astar(grid, (0, 0), (1, 1))
     assert path == []
+
 
 def test_astar_empty_grid():
     grid = []

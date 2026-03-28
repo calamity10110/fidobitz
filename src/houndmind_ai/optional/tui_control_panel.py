@@ -7,6 +7,7 @@ from houndmind_ai.core.module import Module
 
 logger = logging.getLogger(__name__)
 
+
 class TUIControlPanelModule(Module):
     """Optional Terminal User Interface (TUI) control panel.
 
@@ -101,16 +102,16 @@ class TUIControlPanelModule(Module):
 
     def _tui_loop(self, stdscr):
         # Initial setup
-        curses.curs_set(0) # Hide cursor
+        curses.curs_set(0)  # Hide cursor
         stdscr.nodelay(1)  # Non-blocking input
         curses.start_color()
         curses.use_default_colors()
 
         # Color pairs
-        curses.init_pair(1, curses.COLOR_CYAN, -1)   # Header
+        curses.init_pair(1, curses.COLOR_CYAN, -1)  # Header
         curses.init_pair(2, curses.COLOR_GREEN, -1)  # Success/Values
-        curses.init_pair(3, curses.COLOR_YELLOW, -1) # Warnings
-        curses.init_pair(4, curses.COLOR_RED, -1)    # Errors
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)  # Warnings
+        curses.init_pair(4, curses.COLOR_RED, -1)  # Errors
 
         while not self._stop_event.is_set():
             # Handle resize
@@ -154,16 +155,24 @@ class TUIControlPanelModule(Module):
                 mem = perf.get("mem_used_pct")
                 mem_str = f"{mem:.1f}%" if mem else "N/A"
                 stdscr.addstr(7, 4, "Memory    : ")
-                stdscr.attron(curses.color_pair(3) if mem and mem > 80 else curses.color_pair(2))
+                stdscr.attron(
+                    curses.color_pair(3) if mem and mem > 80 else curses.color_pair(2)
+                )
                 stdscr.addstr(mem_str)
-                stdscr.attroff(curses.color_pair(3) if mem and mem > 80 else curses.color_pair(2))
+                stdscr.attroff(
+                    curses.color_pair(3) if mem and mem > 80 else curses.color_pair(2)
+                )
 
                 cpu = perf.get("cpu_temp_c")
                 cpu_str = f"{cpu:.1f}C" if cpu else "N/A"
                 stdscr.addstr(8, 4, "CPU Temp  : ")
-                stdscr.attron(curses.color_pair(4) if cpu and cpu > 75 else curses.color_pair(2))
+                stdscr.attron(
+                    curses.color_pair(4) if cpu and cpu > 75 else curses.color_pair(2)
+                )
                 stdscr.addstr(cpu_str)
-                stdscr.attroff(curses.color_pair(4) if cpu and cpu > 75 else curses.color_pair(2))
+                stdscr.attroff(
+                    curses.color_pair(4) if cpu and cpu > 75 else curses.color_pair(2)
+                )
 
             # Draw Actions
             if max_y > 11:
@@ -184,13 +193,18 @@ class TUIControlPanelModule(Module):
             # Footer / Help
             if max_y > 15:
                 footer = "Press 'q' to exit TUI (Server continues running)"
-                stdscr.addstr(max_y - 1, max((max_x - len(footer)) // 2, 0), footer[:max_x], curses.color_pair(3))
+                stdscr.addstr(
+                    max_y - 1,
+                    max((max_x - len(footer)) // 2, 0),
+                    footer[:max_x],
+                    curses.color_pair(3),
+                )
 
             stdscr.refresh()
 
             # Check for input
             c = stdscr.getch()
-            if c == ord('q'):
+            if c == ord("q"):
                 self._stop_event.set()
                 break
 
