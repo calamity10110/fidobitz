@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import time
+from typing import Any
 from pathlib import Path
 
 from houndmind_ai.core.module import Module
@@ -11,13 +12,14 @@ from houndmind_ai.core.module import Module
 logger = logging.getLogger(__name__)
 
 
-def _build_trig_cache() -> dict[str, tuple[float, float]]:
+def _build_trig_cache() -> dict[Any, tuple[float, float]]:
     cache = {}
     for d in range(-360, 361):
         cos_val = math.cos(math.radians(d))
         sin_val = math.sin(math.radians(d))
         cache[str(d)] = (cos_val, sin_val)
         cache[f"{d}.0"] = (cos_val, sin_val)
+        cache[d] = (cos_val, sin_val)
     return cache
 
 
@@ -28,7 +30,7 @@ class MappingModule(Module):
     a "Home Map" file for later analysis or future navigation upgrades.
     """
 
-    _TRIG_CACHE_STR: dict[str, tuple[float, float]] = _build_trig_cache()
+    _TRIG_CACHE_STR: dict[Any, tuple[float, float]] = _build_trig_cache()
 
     def __init__(self, name: str, enabled: bool = True, required: bool = False) -> None:
         super().__init__(name, enabled=enabled, required=required)
@@ -182,16 +184,21 @@ class MappingModule(Module):
         # Pre-calculate divisor outside the loop
         inv_cell_size = 1.0 / cell_size_cm if cell_size_cm > 0 else 0.0
 
-        # Localize cache lookup to avoid self. overhead
-        trig_cache_str = self._TRIG_CACHE_STR
+        # Localize cache and dictionary lookups to avoid lookup overhead
+        cached_get = self._TRIG_CACHE_STR.get
+        cells_get = cells.get
 
-        # ⚡ Bolt: Optimize cache lookup by doing str(key) check BEFORE parsing
-        # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
-        # overhead for the vast majority of cached integer degree lookups.
+        # ⚡ Bolt: Fast-path logic optimization.
+        # Check cache directly, fallback to string check if needed.
+        # This provides a measurable performance improvement on the hot path since
+        # it avoids allocating a new string object for every dict item when not necessary.
         for key, raw in angles.items():
-            str_key = str(key)
-            if str_key in trig_cache_str:
-                c, s = trig_cache_str[str_key]
+            cached_val = cached_get(key)
+            if cached_val is None:
+                cached_val = cached_get(str(key))
+
+            if cached_val is not None:
+                c, s = cached_val
                 try:
                     dist = float(raw)
                 except Exception:
@@ -221,7 +228,7 @@ class MappingModule(Module):
             if abs(ix) > half_x or abs(iy) > half_y:
                 continue
             k = f"{ix},{iy}"
-            cells[k] = cells.get(k, 0) + 1
+            cells[k] = cells_get(k, 0) + 1
 
         grid["cells"] = cells
         mapping_state["grid"] = grid
