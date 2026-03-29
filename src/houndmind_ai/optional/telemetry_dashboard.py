@@ -231,6 +231,11 @@ class TelemetryDashboardModule(Module):
             # Import the collect function from tools
             from tools.collect_support_bundle import collect
 
+            import re
+            if not re.match(r"^[a-zA-Z0-9_ -]+$", str(trace_id)):
+                logger.warning("Invalid trace_id format rejected: %s", trace_id)
+                return None
+
             safe_trace_id = Path(trace_id).name
             tmp = Path(tempfile.mkdtemp()) / f"support_bundle_{safe_trace_id}.zip"
             # Set env var so the collector records the trace id
