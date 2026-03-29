@@ -788,8 +788,16 @@ class ObstacleAvoidanceModule(Module):
         repeat = int(settings.get("no_go_repeat_threshold", 3))
         if repeat <= 0:
             return direction
-        recent = [d for ts, d in self._no_go_history if now - ts <= window_s]
-        count = recent.count(direction)
+
+        # ⚡ Bolt: Iterate history deque in reverse to filter recent events and break early
+        # instead of allocating a new list comprehension containing all matching entries.
+        count = 0
+        for ts, d in reversed(self._no_go_history):
+            if now - ts > window_s:
+                break
+            if d == direction:
+                count += 1
+
         if count >= repeat:
             if direction == "left":
                 return "right"
@@ -847,8 +855,16 @@ class ObstacleAvoidanceModule(Module):
         repeat_window = float(settings.get("stuck_strategy_repeat_window_s", 10.0))
         repeat_threshold = int(settings.get("stuck_strategy_repeat_threshold", 3))
         now = time.time()
-        recent = [t for t in self._avoid_history if now - t <= repeat_window]
-        if len(recent) >= repeat_threshold:
+
+        # ⚡ Bolt: Iterate history deque in reverse to count recent events and break early
+        # instead of allocating a new list comprehension containing all matching entries.
+        recent_count = 0
+        for t in reversed(self._avoid_history):
+            if now - t > repeat_window:
+                break
+            recent_count += 1
+
+        if recent_count >= repeat_threshold:
             self._strategy_index = (self._strategy_index + 1) % len(strategies)
 
         strategy = str(strategies[self._strategy_index])
