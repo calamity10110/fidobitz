@@ -69,11 +69,11 @@ class MappingModule(Module):
         max_age_s = float(settings.get("sample_max_age_s", 0))
         if max_age_s > 0:
             cutoff = time.time() - max_age_s
-            mapping_state["samples"] = [
-                entry
-                for entry in mapping_state["samples"]
-                if entry.get("timestamp", 0) >= cutoff
-            ]
+            samples = mapping_state["samples"]
+            for i in range(len(samples) - 1, -1, -1):
+                if samples[i].get("timestamp", 0) < cutoff:
+                    mapping_state["samples"] = samples[i + 1 :]
+                    break
         context.set("mapping_state", mapping_state)
 
         context.set(
@@ -127,9 +127,10 @@ class MappingModule(Module):
         max_age_s = float(settings.get("home_map_max_age_s", 0))
         if max_age_s > 0:
             cutoff = time.time() - max_age_s
-            samples = [
-                entry for entry in samples if entry.get("timestamp", 0) >= cutoff
-            ]
+            for i in range(len(samples) - 1, -1, -1):
+                if samples[i].get("timestamp", 0) < cutoff:
+                    samples = samples[i + 1 :]
+                    break
         if max_samples > 0 and len(samples) > max_samples:
             samples = samples[-max_samples:]
 
