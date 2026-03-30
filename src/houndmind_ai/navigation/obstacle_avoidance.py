@@ -788,8 +788,13 @@ class ObstacleAvoidanceModule(Module):
         repeat = int(settings.get("no_go_repeat_threshold", 3))
         if repeat <= 0:
             return direction
-        recent = [d for ts, d in self._no_go_history if now - ts <= window_s]
-        count = recent.count(direction)
+        count = 0
+        for i in range(len(self._no_go_history) - 1, -1, -1):
+            ts, d = self._no_go_history[i]
+            if now - ts > window_s:
+                break
+            if d == direction:
+                count += 1
         if count >= repeat:
             if direction == "left":
                 return "right"
@@ -847,8 +852,12 @@ class ObstacleAvoidanceModule(Module):
         repeat_window = float(settings.get("stuck_strategy_repeat_window_s", 10.0))
         repeat_threshold = int(settings.get("stuck_strategy_repeat_threshold", 3))
         now = time.time()
-        recent = [t for t in self._avoid_history if now - t <= repeat_window]
-        if len(recent) >= repeat_threshold:
+        count = 0
+        for i in range(len(self._avoid_history) - 1, -1, -1):
+            if now - self._avoid_history[i] > repeat_window:
+                break
+            count += 1
+        if count >= repeat_threshold:
             self._strategy_index = (self._strategy_index + 1) % len(strategies)
 
         strategy = str(strategies[self._strategy_index])
