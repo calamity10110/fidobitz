@@ -232,6 +232,7 @@ class TelemetryDashboardModule(Module):
             from tools.collect_support_bundle import collect
 
             import re
+
             if not re.match(r"^[a-zA-Z0-9_ -]+$", str(trace_id)):
                 logger.warning("Invalid trace_id format rejected: %s", trace_id)
                 return None
