@@ -181,9 +181,16 @@ class VisionPi4Module(Module):
                 context.set("shared_auth_token_printed", True)
 
         if host == "0.0.0.0":
-            logger.warning(
-                "Vision HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
-            )
+            if not http_settings.get("danger_allow_public", False):
+                logger.error(
+                    "Vision HTTP server configured to bind to 0.0.0.0, but 'danger_allow_public' is not true. "
+                    "Falling back to 127.0.0.1 for security."
+                )
+                host = "127.0.0.1"
+            else:
+                logger.warning(
+                    "Vision HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+                )
 
         module = self
 
@@ -210,12 +217,16 @@ class VisionPi4Module(Module):
 
                 if path != "/stream":
                     self.send_response(404)
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.send_header("X-Frame-Options", "DENY")
                     self.end_headers()
                     return
 
                 if not self._auth_ok(params):
                     self.send_response(401)
                     self.send_header("Content-Type", "application/json")
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.send_header("X-Frame-Options", "DENY")
                     self.end_headers()
                     self.wfile.write(b'{"error": "unauthorized"}')
                     return
@@ -224,6 +235,8 @@ class VisionPi4Module(Module):
                 self.send_header(
                     "Content-Type", "multipart/x-mixed-replace; boundary=frame"
                 )
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
                 self.end_headers()
 
                 try:

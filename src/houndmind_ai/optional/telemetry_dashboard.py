@@ -356,9 +356,16 @@ class TelemetryDashboardModule(Module):
                 context.set("shared_auth_token_printed", True)
 
         if host == "0.0.0.0":
-            logger.warning(
-                "Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
-            )
+            if not http_settings.get("danger_allow_public", False):
+                logger.error(
+                    "Telemetry dashboard configured to bind to 0.0.0.0, but 'danger_allow_public' is not true. "
+                    "Falling back to 127.0.0.1 for security."
+                )
+                host = "127.0.0.1"
+            else:
+                logger.warning(
+                    "Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+                )
 
         # Create a subclass of our handler that has this module instance bound to it
         class BoundHandler(TelemetryHTTPHandler):

@@ -226,9 +226,16 @@ class VoiceModule(Module):
             print(f"Voice server generated session token: {self._auth_token}")
 
         if host == "0.0.0.0":
-            logger.warning(
-                "Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
-            )
+            if not http_settings.get("danger_allow_public", False):
+                logger.error(
+                    "Voice server configured to bind to 0.0.0.0, but 'danger_allow_public' is not true. "
+                    "Falling back to 127.0.0.1 for security."
+                )
+                host = "127.0.0.1"
+            else:
+                logger.warning(
+                    "Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+                )
 
         module = self
 
@@ -238,6 +245,8 @@ class VoiceModule(Module):
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
                 self.end_headers()
                 self.wfile.write(data)
 
