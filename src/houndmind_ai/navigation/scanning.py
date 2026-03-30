@@ -319,13 +319,13 @@ class ScanningModule(Module):
         history = self.service.history() if self.service else []
         self._context.set("scan_history", [entry.to_dict() for entry in history])
         # Emit scan quality summary for tuning.
-        distances = []
         data = reading.data or {}
         try:
-            for val in data.values():
-                dist = float(val)
-                if dist > 0:
-                    distances.append(dist)
+            # ⚡ Bolt: Fast-path for casting and filtering valid sensor values.
+            # Consolidates a multi-line append loop into a fast C-level list comprehension.
+            distances = [
+                d for val in data.values() if (d := float(val)) > 0
+            ]
         except Exception:  # noqa: BLE001
             distances = []
         total = len(data) if isinstance(data, dict) else 0

@@ -20,3 +20,11 @@
 ## 2024-05-18 - Rejected Auto-formatting overreach and extreme micro-optimizations
 **Learning:** Running tools like `ruff format .` globally across the repository modifies dozens of files with whitespace/formatting changes, polluting the git history and obscuring the actual PR goal. Furthermore, attempting to optimize type conversion order in a loop (e.g. converting float before int to save micro-seconds on failure paths) is considered an unmeasurable micro-optimization that fails code review constraints.
 **Action:** Never run global auto-formatting (`ruff format .`). Only format files you explicitly modify. Prioritize structural O(N) optimizations (like removing memory allocations or secondary loops) rather than re-ordering micro-statements without measurable benchmarks.
+
+## 2024-05-18 - Fast List Appending via Walrus List Comprehension
+**Learning:** In Python, traditional `for` loops that evaluate conditions and then `.append()` to a list are significantly slower than list comprehensions because they execute multiple Python-level function calls per iteration.
+**Action:** When mapping over items with a condition, combine casting/evaluation and the check directly inside a list comprehension using the walrus operator. For example, replacing a loop that appends `d` if `d > 0` after `d = float(val)` with `[d for val in data.values() if (d := float(val)) > 0]` is noticeably faster and remains highly readable.
+
+## 2024-05-18 - Avoid Deque conversions and premature micro-optimizations
+**Learning:** Iterating backward manually and slicing a `list()` wrapped `collections.deque` causes severe O(N) memory allocations, destroying the benefits of an intended O(K) algorithmic shortcut for chronological data. Furthermore, removing explicit boolean emptiness checks on byte arrays (like `len(data) == 0`) and removing safe `.size > 0` assertions from numpy arrays provides virtually zero performance improvement but introduces extreme regression risk (like `ValueError` exceptions).
+**Action:** Never convert a `collections.deque` to a `list` just to slice it in a hot loop. Avoid attempting to remove explicit checks (e.g. `len() > 0`) purely for code-golfing or micro-optimizing readability, unless explicitly verified by a profiler to be a genuine bottleneck. Ensure empty arrays are safely evaluated before running reduction methods like `.argmin()`.
