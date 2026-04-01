@@ -15,3 +15,13 @@
 **Vulnerability:** HTTP servers in `FaceRecognitionModule`, `VisionPi4Module`, `VoiceModule`, and `TelemetryDashboardModule` permitted binding to the public `0.0.0.0` interface without strictly enforcing an opt-in security flag, potentially exposing sensitive endpoints to untrusted networks. Also, the `VisionPi4Module`, `FaceRecognitionModule`, and `VoiceModule` lacked fundamental security headers like `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` on multiple response variants.
 **Learning:** Security-sensitive HTTP servers embedded in modules must default securely (`127.0.0.1`) and explicitly reject insecure configuration (`0.0.0.0`) unless a dedicated boolean override (e.g., `danger_allow_public`) is provided to indicate intentional, informed risk. Additionally, all possible HTTP responses (including JSON APIs, streams, and 401/404 errors) require comprehensive header hardening.
 **Prevention:** Implement strict network binding checks that fall back to `127.0.0.1` upon encountering `0.0.0.0` without the `danger_allow_public` flag. Always verify that all paths and response types within a `BaseHTTPRequestHandler` emit `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` headers.
+
+## 2024-05-27 - [Inconsistent Auth Token Generation Across Modules]
+**Vulnerability:** FaceRecognitionModule and VoiceModule generated their own tokens (`secrets.token_urlsafe(32)`) locally rather than utilizing the globally consistent `get_shared_auth_token`.
+**Learning:** This fragmented the security model, making it impossible to predict or share the authorization token dynamically injected or generated for other modules like Telemetry and Vision. As a result, users might be inadvertently locked out or required to discover logs for multiple distinct tokens.
+**Prevention:** Always enforce usage of `houndmind_ai.core.auth.get_shared_auth_token` when configuring module endpoints to guarantee session consistency.
+
+## 2024-05-27 - [Missing Content-Disposition Headers on File Endpoints]
+**Vulnerability:** The TelemetryDashboardModule returned sensitive file payloads (`application/json` and `application/zip`) via endpoints without the `Content-Disposition: attachment` header.
+**Learning:** Relying solely on the frontend client (e.g. `a.download`) to enforce download behavior allows browsers to potentially render payloads directly if a user navigates manually. For JSON payloads, this exposes the application to potential MIME-sniffing or XSS if the data were mishandled.
+**Prevention:** Always pair `Content-Type` headers with `Content-Disposition: attachment; filename="..."` when serving data intended exclusively for download.

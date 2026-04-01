@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from houndmind_ai.core.module import Module
+from houndmind_ai.core.auth import get_shared_auth_token
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class FaceRecognitionModule(Module):
         context.set(
             "face_recognition_status", {"status": "ready", "backend": self.backend}
         )
-        self._maybe_start_http(settings)
+        self._maybe_start_http(context, settings)
 
     def _init_lbph(self, settings: dict) -> None:
         lbph_settings = settings.get("lbph", {})
@@ -148,7 +149,7 @@ class FaceRecognitionModule(Module):
         context.set(
             "face_recognition_status", {"status": "ready", "backend": self.backend}
         )
-        self._maybe_start_http(settings)
+        self._maybe_start_http(context, settings)
 
     def tick(self, context) -> None:
         if not self.available or not self.status.enabled:
@@ -198,7 +199,7 @@ class FaceRecognitionModule(Module):
             "detected": detections,
         }
 
-    def _maybe_start_http(self, settings: dict) -> None:
+    def _maybe_start_http(self, context, settings: dict) -> None:
         http_settings = settings.get("http", {})
         if not http_settings.get("enabled", False):
             return
@@ -208,14 +209,14 @@ class FaceRecognitionModule(Module):
 
         # Optional simple token-based auth for endpoints that can expose
         # sensitive data or trigger operations (enrolling faces).
-        self._auth_token = http_settings.get("auth_token")
-        if not self._auth_token:
-            self._auth_token = secrets.token_urlsafe(32)
+        self._auth_token = get_shared_auth_token(context, http_settings)
+        if self._auth_token == context.get("shared_auth_token"):
             logger.debug(
-                "No auth_token configured for face recognition; generated a secure session token: %s",
-                self._auth_token,
+                "No auth_token configured for face recognition; using generated shared session token."
             )
-            print(f"Face recognition generated session token: {self._auth_token}")
+            if context.get("shared_auth_token_printed") is not True:
+                print(f"Generated shared session token: {self._auth_token}")
+                context.set("shared_auth_token_printed", True)
 
         if host == "0.0.0.0":
             if not http_settings.get("danger_allow_public", False):
