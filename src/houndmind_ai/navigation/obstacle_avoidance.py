@@ -705,12 +705,10 @@ class ObstacleAvoidanceModule(Module):
 
         left_count = 0
         right_count = 0
-        # cells keys are "ix,iy" where ix = lateral (left + / right -), iy = forward cells
+        # cells keys are tuples (ix, iy) where ix = lateral (left + / right -), iy = forward cells
         for k, v in cells.items():
             try:
-                ix_s, iy_s = k.split(",")
-                ix = int(ix_s)
-                iy = int(iy_s)
+                ix, iy = k
             except Exception:
                 continue
             if iy < 0 or iy > depth_cells:

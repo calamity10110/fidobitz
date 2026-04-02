@@ -6,7 +6,7 @@ def test_grid_bias_prefers_sparser_side():
     ctx = RuntimeContext()
     module = ObstacleAvoidanceModule("avoid_test")
     # mapping_state grid with left dense and right sparse
-    grid = {"cells": {"-2,1": 5, "-1,1": 3, "1,1": 0, "2,1": 0}}
+    grid = {"cells": {(-2, 1): 5, (-1, 1): 3, (1, 1): 0, (2, 1): 0}}
     ctx.set("mapping_state", {"grid": grid})
     settings = {
         "use_grid_map": True,

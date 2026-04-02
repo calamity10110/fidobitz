@@ -228,7 +228,7 @@ class MappingModule(Module):
             # Bound to grid size
             if abs(ix) > half_x or abs(iy) > half_y:
                 continue
-            k = f"{ix},{iy}"
+            k = (ix, iy)
             cells[k] = cells.get(k, 0) + 1
 
         grid["cells"] = cells
