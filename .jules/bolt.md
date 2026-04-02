@@ -24,3 +24,7 @@
 ## 2025-02-15 - O(N) Reverse-Iteration for Time-Series Filtering
 **Learning:** Python list comprehensions like `[e for e in history if e["timestamp"] >= cutoff]` require an O(N) pass and memory allocation, even when `history` is chronologically ordered and most elements meet the condition. By iterating over the history list in reverse (`for i in range(len(history)-1, -1, -1)`), checking if the element falls outside the time window, and then slicing `history[i+1:]` and `break`ing early, you can reduce the traversal time from O(N) down to O(K) where K is the number of recent elements. This approach is orders of magnitude faster and memory-efficient for pruning old events or scanning recent occurrences.
 **Action:** When filtering chronologically ordered lists (like event histories, logs, or sensor samples) by a time window, avoid list comprehensions. Instead, use a reverse `for` loop to find the cutoff index and slice the list, breaking early.
+
+## 2024-05-18 - Fast Path Dictionary Checking
+**Learning:** Keys read from JSON formats are often already strings. Always attempt a zero-allocation `.get(key)` first over forced `str()` conversions when using dictionary mapping logic inside hot paths.
+**Action:** When a cache dictionary is frequently queried, start with a direct `get()` before performing explicit typecasting and re-evaluating.
