@@ -280,23 +280,30 @@ class MappingModule(Module):
 
         for yaw, dist in items:
             width_cm = dist * width_multiplier if dist > 0 else 0.0
-            conf = dist / 200.0 if dist < 200.0 else 1.0
-            entry = {
-                "yaw": yaw,
-                "distance_cm": dist,
-                "width_cm": width_cm,
-                "confidence": conf,
-            }
-            if (
+            # ⚡ Bolt: Use multiplication instead of division for speed
+            conf = dist * 0.005 if dist < 200.0 else 1.0
+
+            is_open = (
                 min_open_width_cm <= width_cm <= max_open_width_cm
                 and conf >= min_open_conf
-            ):
-                openings.append(entry)
-            if (
+            )
+            is_safe = (
                 min_safe_width_cm <= width_cm <= max_safe_width_cm
                 and conf >= min_safe_conf
-            ):
-                safe_paths.append(entry)
+            )
+
+            # ⚡ Bolt: Defer dict allocation until we know it's needed
+            if is_open or is_safe:
+                entry = {
+                    "yaw": yaw,
+                    "distance_cm": dist,
+                    "width_cm": width_cm,
+                    "confidence": conf,
+                }
+                if is_open:
+                    openings.append(entry)
+                if is_safe:
+                    safe_paths.append(entry)
 
         best_path = None
         if safe_paths:
