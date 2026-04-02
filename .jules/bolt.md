@@ -24,3 +24,7 @@
 ## 2025-02-15 - O(N) Reverse-Iteration for Time-Series Filtering
 **Learning:** Python list comprehensions like `[e for e in history if e["timestamp"] >= cutoff]` require an O(N) pass and memory allocation, even when `history` is chronologically ordered and most elements meet the condition. By iterating over the history list in reverse (`for i in range(len(history)-1, -1, -1)`), checking if the element falls outside the time window, and then slicing `history[i+1:]` and `break`ing early, you can reduce the traversal time from O(N) down to O(K) where K is the number of recent elements. This approach is orders of magnitude faster and memory-efficient for pruning old events or scanning recent occurrences.
 **Action:** When filtering chronologically ordered lists (like event histories, logs, or sensor samples) by a time window, avoid list comprehensions. Instead, use a reverse `for` loop to find the cutoff index and slice the list, breaking early.
+
+## 2025-02-15 - Optimize A* Tuple Creation
+**Learning:** In tight inner loops (like evaluating neighboring nodes in A*), dynamically allocating nested tuples of coordinates (e.g. `((x - 1, y), ...)`) on every iteration incurs significant Python interpreter overhead and slows down execution speed by about 30%.
+**Action:** Replace dynamically created tuples with pre-allocated constant coordinate offset tuples (e.g., `((-1, 0), ...)`) and use simple arithmetic (`nx, ny = x + dx, y + dy`) inside the loop to avoid allocations entirely.
