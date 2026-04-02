@@ -1,5 +1,5 @@
 import time
-from houndmind_ai.navigation.local_planner import LocalPlannerModule
+from houndmind_ai.navigation.local_planner import LocalPlannerModule, _safe_int, _safe_float
 
 
 class DummyContext:
@@ -11,6 +11,24 @@ class DummyContext:
 
     def set(self, key, value):
         self.data[key] = value
+
+
+def test_safe_int():
+    assert _safe_int(5, 10) == 5
+    assert _safe_int("5", 10) == 5
+    assert _safe_int(5.5, 10) == 5
+    assert _safe_int(None, 10) == 10
+    assert _safe_int("not_an_int", 10) == 10  # ValueError
+    assert _safe_int([1, 2], 10) == 10  # TypeError
+
+
+def test_safe_float():
+    assert _safe_float(5.5, 10.0) == 5.5
+    assert _safe_float("5.5", 10.0) == 5.5
+    assert _safe_float(5, 10.0) == 5.0
+    assert _safe_float(None, 10.0) == 10.0
+    assert _safe_float("not_a_float", 10.0) == 10.0  # ValueError
+    assert _safe_float([1.0], 10.0) == 10.0  # TypeError
 
 
 def test_local_planner_tick_disabled():
