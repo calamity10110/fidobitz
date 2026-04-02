@@ -249,15 +249,17 @@ class MappingModule(Module):
         min_safe_conf = float(settings.get("safe_path_cell_conf_min", 0.5))
 
         items = []
+        # ⚡ Bolt: Fast path array population with localized reference.
+        # Use a single try/except block that assumes data is valid, directly
+        # validating and casting without a secondary validation check per iteration.
+        append = items.append
         for key, dist in angles.items():
             try:
-                yaw = int(float(key))
                 distance = float(dist)
+                if distance > 0:
+                    append((int(float(key)), distance))
             except Exception:
-                continue
-            if distance <= 0:
-                continue
-            items.append((yaw, distance))
+                pass
 
         if not items:
             return [], [], None
@@ -279,7 +281,8 @@ class MappingModule(Module):
         width_multiplier = step_deg * 0.0174533
 
         for yaw, dist in items:
-            width_cm = dist * width_multiplier if dist > 0 else 0.0
+            # ⚡ Bolt: Removed redundant `if dist > 0` check; items only contains dist > 0
+            width_cm = dist * width_multiplier
             conf = dist / 200.0 if dist < 200.0 else 1.0
             entry = {
                 "yaw": yaw,
