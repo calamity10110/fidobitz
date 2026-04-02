@@ -24,3 +24,7 @@
 ## 2025-02-15 - O(N) Reverse-Iteration for Time-Series Filtering
 **Learning:** Python list comprehensions like `[e for e in history if e["timestamp"] >= cutoff]` require an O(N) pass and memory allocation, even when `history` is chronologically ordered and most elements meet the condition. By iterating over the history list in reverse (`for i in range(len(history)-1, -1, -1)`), checking if the element falls outside the time window, and then slicing `history[i+1:]` and `break`ing early, you can reduce the traversal time from O(N) down to O(K) where K is the number of recent elements. This approach is orders of magnitude faster and memory-efficient for pruning old events or scanning recent occurrences.
 **Action:** When filtering chronologically ordered lists (like event histories, logs, or sensor samples) by a time window, avoid list comprehensions. Instead, use a reverse `for` loop to find the cutoff index and slice the list, breaking early.
+
+## 2024-05-18 - Loop-Invariant Code Motion in Scanning Service
+**Learning:** In high-frequency hardware/sensor polling loops (like `_read_distance` reading ultrasonic arrays multiple times), redundant `hasattr()` checks, dynamic method bindings, and invariant type conversions within the tight loop add unnoticeable but continuous CPU overhead.
+**Action:** Always apply Loop-Invariant Code Motion to hoist method bindings and static setup outside of sampling `for` loops. Assign the correct function to a local variable once before the loop begins.

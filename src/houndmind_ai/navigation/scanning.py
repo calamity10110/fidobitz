@@ -200,19 +200,22 @@ class ScanningService:
 
     def _read_distance(self, samples: int, between_reads_s: float) -> float:
         values: list[float] = []
+
+        # ⚡ Bolt: Localize function binding and sleep parsing outside the hot loop
+        # to prevent redundant evaluations on every sample request.
+        read_func = self._dog.read_distance if hasattr(self._dog, "read_distance") else self._dog.ultrasonic.read_distance
+        sleep_time = _safe_float(between_reads_s, 0.0) if between_reads_s else 0.0
+
         for _ in range(max(1, samples)):
-            if hasattr(self._dog, "read_distance"):
-                value = self._dog.read_distance()
-            else:
-                value = self._dog.ultrasonic.read_distance()
+            value = read_func()
             try:
                 val = float(value)
             except Exception:
                 val = 0.0
             if val > 0:
                 values.append(val)
-            if between_reads_s:
-                time.sleep(_safe_float(between_reads_s, 0.0))
+            if sleep_time > 0:
+                time.sleep(sleep_time)
         if not values:
             return 0.0
         values.sort()
