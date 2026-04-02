@@ -197,9 +197,13 @@ class MappingModule(Module):
         # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
         # overhead for the vast majority of cached integer degree lookups.
         for key, raw in angles.items():
-            str_key = str(key)
-            if str_key in trig_cache_str:
-                c, s = trig_cache_str[str_key]
+            # FAST PATH: Try direct .get first, zero allocations for string keys!
+            cached = trig_cache_str.get(key)
+            if cached is None:
+                cached = trig_cache_str.get(str(key))
+
+            if cached is not None:
+                c, s = cached
                 try:
                     dist = float(raw)
                 except Exception:
