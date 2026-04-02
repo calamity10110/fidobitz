@@ -191,15 +191,15 @@ class MappingModule(Module):
         inv_cell_size = 1.0 / cell_size_cm if cell_size_cm > 0 else 0.0
 
         # Localize cache lookup to avoid self. overhead
-        trig_cache_str = self._TRIG_CACHE_STR
+        get_cached = self._TRIG_CACHE_STR.get
 
-        # ⚡ Bolt: Optimize cache lookup by doing str(key) check BEFORE parsing
-        # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
-        # overhead for the vast majority of cached integer degree lookups.
+        # ⚡ Bolt: Optimize cache lookup by attempting a direct get first.
+        # This completely skips str() allocation for the majority of keys which
+        # are already strings (e.g. from JSON), providing a fast zero-allocation path.
         for key, raw in angles.items():
-            str_key = str(key)
-            if str_key in trig_cache_str:
-                c, s = trig_cache_str[str_key]
+            cached = get_cached(key)
+            if cached is not None:
+                c, s = cached
                 try:
                     dist = float(raw)
                 except Exception:
@@ -207,17 +207,28 @@ class MappingModule(Module):
                 if dist <= 0:
                     continue
             else:
-                try:
-                    yaw = int(float(key))
-                    dist = float(raw)
-                except Exception:
-                    continue
-                if dist <= 0:
-                    continue
-                # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
-                # degrees where 0 = forward, positive = left.
-                rad = math.radians(yaw)
-                c, s = math.cos(rad), math.sin(rad)
+                str_key = str(key)
+                cached_str = get_cached(str_key)
+                if cached_str is not None:
+                    c, s = cached_str
+                    try:
+                        dist = float(raw)
+                    except Exception:
+                        continue
+                    if dist <= 0:
+                        continue
+                else:
+                    try:
+                        yaw = int(float(key))
+                        dist = float(raw)
+                    except Exception:
+                        continue
+                    if dist <= 0:
+                        continue
+                    # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
+                    # degrees where 0 = forward, positive = left.
+                    rad = math.radians(yaw)
+                    c, s = math.cos(rad), math.sin(rad)
 
             # ⚡ Bolt: Avoid multiple multiplications per iteration by combining
             # distance with the inverted cell size scalar early.
