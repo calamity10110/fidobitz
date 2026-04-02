@@ -193,13 +193,17 @@ class MappingModule(Module):
         # Localize cache lookup to avoid self. overhead
         trig_cache_str = self._TRIG_CACHE_STR
 
-        # ⚡ Bolt: Optimize cache lookup by doing str(key) check BEFORE parsing
-        # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
-        # overhead for the vast majority of cached integer degree lookups.
+        # ⚡ Bolt: Optimize cache lookup by attempting direct dict access
+        # before fallback string conversion. JSON dictionaries naturally provide
+        # strings, avoiding expensive explicit str() casting in the hot loop.
         for key, raw in angles.items():
-            str_key = str(key)
-            if str_key in trig_cache_str:
-                c, s = trig_cache_str[str_key]
+            # Create a zero-allocation fast path for common string keys.
+            hit = trig_cache_str.get(key)
+            if hit is None:
+                hit = trig_cache_str.get(str(key))
+
+            if hit is not None:
+                c, s = hit
                 try:
                     dist = float(raw)
                 except Exception:
@@ -228,7 +232,7 @@ class MappingModule(Module):
             # Bound to grid size
             if abs(ix) > half_x or abs(iy) > half_y:
                 continue
-            k = f"{ix},{iy}"
+            k = (ix, iy)
             cells[k] = cells.get(k, 0) + 1
 
         grid["cells"] = cells
