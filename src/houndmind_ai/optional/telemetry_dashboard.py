@@ -100,7 +100,10 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
                 data = fh.read()
             self.send_response(200)
             self.send_header("Content-Type", "application/zip")
-            self.send_header("Content-Disposition", f'attachment; filename="support_bundle_{req_trace}.zip"')
+            self.send_header(
+                "Content-Disposition",
+                f'attachment; filename="support_bundle_{req_trace}.zip"',
+            )
             self.send_header("Content-Length", str(len(data)))
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("X-Frame-Options", "DENY")
@@ -117,7 +120,9 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         payload = json.dumps({"trajectory": data}, default=str).encode("utf-8")
         self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Disposition", 'attachment; filename="slam_trajectory.json"')
+        self.send_header(
+            "Content-Disposition", 'attachment; filename="slam_trajectory.json"'
+        )
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")

@@ -1,5 +1,9 @@
 import time
-from houndmind_ai.navigation.local_planner import LocalPlannerModule, _safe_int, _safe_float
+from houndmind_ai.navigation.local_planner import (
+    LocalPlannerModule,
+    _safe_int,
+    _safe_float,
+)
 
 
 class DummyContext:
