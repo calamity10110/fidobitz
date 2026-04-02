@@ -70,10 +70,15 @@ class MappingModule(Module):
         if max_age_s > 0:
             cutoff = time.time() - max_age_s
             samples = mapping_state["samples"]
-            for i in range(len(samples) - 1, -1, -1):
-                if samples[i].get("timestamp", 0) < cutoff:
-                    mapping_state["samples"] = samples[i + 1 :]
+            # ⚡ Bolt: Use forward iteration to find the first sample newer than cutoff.
+            # This slices chronologically ordered lists in O(K) where K is the number
+            # of pruned items, instead of O(N) reverse iteration.
+            for i in range(len(samples)):
+                if samples[i].get("timestamp", 0) >= cutoff:
+                    mapping_state["samples"] = samples[i:]
                     break
+            else:
+                mapping_state["samples"] = []
         context.set("mapping_state", mapping_state)
 
         context.set(
@@ -127,10 +132,12 @@ class MappingModule(Module):
         max_age_s = float(settings.get("home_map_max_age_s", 0))
         if max_age_s > 0:
             cutoff = time.time() - max_age_s
-            for i in range(len(samples) - 1, -1, -1):
-                if samples[i].get("timestamp", 0) < cutoff:
-                    samples = samples[i + 1 :]
+            for i in range(len(samples)):
+                if samples[i].get("timestamp", 0) >= cutoff:
+                    samples = samples[i:]
                     break
+            else:
+                samples = []
         if max_samples > 0 and len(samples) > max_samples:
             samples = samples[-max_samples:]
 
