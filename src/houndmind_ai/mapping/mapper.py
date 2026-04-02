@@ -193,13 +193,17 @@ class MappingModule(Module):
         # Localize cache lookup to avoid self. overhead
         trig_cache_str = self._TRIG_CACHE_STR
 
-        # ⚡ Bolt: Optimize cache lookup by doing str(key) check BEFORE parsing
-        # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
-        # overhead for the vast majority of cached integer degree lookups.
+        # ⚡ Bolt: Optimize cache lookup by attempting a direct get(key) first to avoid
+        # string allocation if the keys are already strings. Fall back to str(key) and
+        # numerical parsing on cache miss.
+        trig_cache_get = trig_cache_str.get
         for key, raw in angles.items():
-            str_key = str(key)
-            if str_key in trig_cache_str:
-                c, s = trig_cache_str[str_key]
+            cached = trig_cache_get(key)
+            if cached is None:
+                cached = trig_cache_get(str(key))
+
+            if cached is not None:
+                c, s = cached
                 try:
                     dist = float(raw)
                 except Exception:
