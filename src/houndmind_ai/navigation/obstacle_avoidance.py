@@ -748,7 +748,7 @@ class ObstacleAvoidanceModule(Module):
         if confidence < min_conf:
             return fallback
         direction = hint.get("direction")
-        if direction not in ("left", "right", "forward"):
+        if direction not in {"left", "right", "forward"}:
             return fallback
         if not settings.get("slam_nav_override", True):
             return fallback
@@ -775,12 +775,12 @@ class ObstacleAvoidanceModule(Module):
         self._avoid_history.append(now)
 
     def _record_no_go(self, direction: str, now: float) -> None:
-        if direction not in ("left", "right", "forward"):
+        if direction not in {"left", "right", "forward"}:
             return
         self._no_go_history.append((now, direction))
 
     def _apply_no_go_bias(self, direction: str, now: float, settings) -> str:
-        if direction not in ("left", "right", "forward"):
+        if direction not in {"left", "right", "forward"}:
             return direction
         if not settings.get("no_go_enabled", False):
             return direction

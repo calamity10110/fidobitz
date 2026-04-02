@@ -42,7 +42,7 @@ class EnergyEmotionModule(Module):
         max_energy = float(energy_cfg.get("max", 1.0))
 
         perception = context.get("perception") or {}
-        if perception.get("touch") not in (None, "N"):
+        if perception.get("touch") not in {None, "N"}:
             energy += boost_touch
         if perception.get("sound"):
             energy += boost_sound
