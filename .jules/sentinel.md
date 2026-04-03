@@ -25,3 +25,8 @@
 **Vulnerability:** The TelemetryDashboardModule returned sensitive file payloads (`application/json` and `application/zip`) via endpoints without the `Content-Disposition: attachment` header.
 **Learning:** Relying solely on the frontend client (e.g. `a.download`) to enforce download behavior allows browsers to potentially render payloads directly if a user navigates manually. For JSON payloads, this exposes the application to potential MIME-sniffing or XSS if the data were mishandled.
 **Prevention:** Always pair `Content-Type` headers with `Content-Disposition: attachment; filename="..."` when serving data intended exclusively for download.
+
+## 2024-04-03 - OOM Denial of Service via Unbounded HTTP Body Read
+**Vulnerability:** HTTP POST handlers in `voice.py` and `face_recognition.py` called `self.rfile.read(length)` directly using the `Content-Length` header without validating an upper boundary. This allows an attacker to send a request with a massive `Content-Length`, exhausting server memory.
+**Learning:** In Python's built-in `http.server`, `rfile.read()` is a blocking, synchronous call that attempts to load the entire specified payload into memory at once.
+**Prevention:** Always validate `Content-Length` before executing `rfile.read()`, returning a `413 Payload Too Large` error for abnormally large requests.
