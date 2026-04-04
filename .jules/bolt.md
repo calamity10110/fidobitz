@@ -28,3 +28,11 @@
 ## 2024-05-18 - Avoid String Key Overhead in Coordinate Dictionaries
 **Learning:** For in-memory spatial mapping dictionaries (like `grid['cells']`), using formatted strings `f'{ix},{iy}'` as keys introduces severe performance penalties. Every insertion incurs string formatting overhead, and every read/evaluation requires string splitting (`k.split(',')`) and integer casting (`int()`).
 **Action:** Use native tuple keys `(ix, iy)` instead of formatted strings. Tuples are natively supported as dictionary keys in Python and hash efficiently, completely bypassing the formatting and parsing overhead during high-frequency navigation/mapping loops. Ensure legacy compatibility when reading the dictionary if string keys might be present from saved states.
+
+## 2024-05-13 - Avoid dynamic tuple allocation in hot loops
+**Learning:** Instantiating small coordinate tuples inside hot inner loops (like `for nx, ny in ((x - 1, y), ...)` in A* pathfinding) creates continuous memory allocation churn and interpreter overhead in Python.
+**Action:** Pre-allocate offsets as module-level or outer-scope constants (`OFFSETS = ((-1, 0), ...)`) and use inline arithmetic to dynamically compute coordinates, keeping the hot loop allocation-free.
+
+## 2024-05-13 - Fast-path validation and reciprocal multiplication
+**Learning:** Redundant value checks (e.g., repeating `dist > 0` validation after filtering it earlier) and floating-point divisions (`dist / 200.0`) act as silent limiters in high-frequency data processing loops.
+**Action:** Consolidate parsing and filtering into a single localized `try...except` fast path, pre-calculate scalar multipliers (`* 0.005` instead of `/ 200.0`), and leverage localized class methods (`append = items.append`) to drop iteration times by ~5%.

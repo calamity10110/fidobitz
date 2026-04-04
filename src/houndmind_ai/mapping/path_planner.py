@@ -35,6 +35,9 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
     get_g = g_score.get
     inf = float("inf")
 
+    # ⚡ Bolt: Pre-allocate offsets to avoid nested tuple allocation overhead in the hot loop
+    OFFSETS = ((-1, 0), (1, 0), (0, -1), (0, 1))
+
     while open_set:
         _, cost, node = heappop(open_set)
 
@@ -53,7 +56,9 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
         x, y = node
         tentative_g = cost + 1
 
-        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+        for dx, dy in OFFSETS:
+            nx = x + dx
+            ny = y + dy
             if 0 <= nx < w and 0 <= ny < h and passable(grid[ny][nx]):
                 neighbor = (nx, ny)
                 if tentative_g < get_g(neighbor, inf):

@@ -249,15 +249,15 @@ class MappingModule(Module):
         min_safe_conf = float(settings.get("safe_path_cell_conf_min", 0.5))
 
         items = []
+        append = items.append
         for key, dist in angles.items():
             try:
                 yaw = int(float(key))
                 distance = float(dist)
+                if distance > 0:
+                    append((yaw, distance))
             except Exception:
                 continue
-            if distance <= 0:
-                continue
-            items.append((yaw, distance))
 
         if not items:
             return [], [], None
@@ -277,10 +277,15 @@ class MappingModule(Module):
             step_deg = 15.0
 
         width_multiplier = step_deg * 0.0174533
+        # ⚡ Bolt: Replace division with reciprocal multiplication
+        conf_multiplier = 0.005  # 1.0 / 200.0
+
+        append_openings = openings.append
+        append_safe_paths = safe_paths.append
 
         for yaw, dist in items:
-            width_cm = dist * width_multiplier if dist > 0 else 0.0
-            conf = dist / 200.0 if dist < 200.0 else 1.0
+            width_cm = dist * width_multiplier  # dist > 0 is already guaranteed
+            conf = dist * conf_multiplier if dist < 200.0 else 1.0
             entry = {
                 "yaw": yaw,
                 "distance_cm": dist,
@@ -291,12 +296,12 @@ class MappingModule(Module):
                 min_open_width_cm <= width_cm <= max_open_width_cm
                 and conf >= min_open_conf
             ):
-                openings.append(entry)
+                append_openings(entry)
             if (
                 min_safe_width_cm <= width_cm <= max_safe_width_cm
                 and conf >= min_safe_conf
             ):
-                safe_paths.append(entry)
+                append_safe_paths(entry)
 
         best_path = None
         if safe_paths:
