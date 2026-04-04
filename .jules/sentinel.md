@@ -25,3 +25,8 @@
 **Vulnerability:** The TelemetryDashboardModule returned sensitive file payloads (`application/json` and `application/zip`) via endpoints without the `Content-Disposition: attachment` header.
 **Learning:** Relying solely on the frontend client (e.g. `a.download`) to enforce download behavior allows browsers to potentially render payloads directly if a user navigates manually. For JSON payloads, this exposes the application to potential MIME-sniffing or XSS if the data were mishandled.
 **Prevention:** Always pair `Content-Type` headers with `Content-Disposition: attachment; filename="..."` when serving data intended exclusively for download.
+
+## 2024-05-31 - Missing Input Length Limits in HTTP Handlers
+**Vulnerability:** HTTP POST endpoints in `VoiceModule` and `FaceRecognitionModule` blindly read the request body up to the length specified by the client-provided `Content-Length` header via `self.rfile.read(length)`. This allows an attacker to cause memory exhaustion / OOM (Denial of Service) by sending a massive `Content-Length` header.
+**Learning:** In Python's `http.server.BaseHTTPRequestHandler`, `self.rfile.read(length)` executes synchronously and blocks, allocating memory equivalent to `length`.
+**Prevention:** Always validate and enforce a strict upper limit on the `Content-Length` header before reading the payload (e.g., 1MB for text commands). Return a 413 Payload Too Large error if exceeded.

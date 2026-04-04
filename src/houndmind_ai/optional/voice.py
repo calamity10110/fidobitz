@@ -300,6 +300,9 @@ class VoiceModule(Module):
                     self._send_json({"error": "unauthorized"}, status=401)
                     return
                 length = int(self.headers.get("Content-Length", "0"))
+                if length > 1024 * 1024:  # 1MB limit
+                    self._send_json({"error": "Payload too large"}, status=413)
+                    return
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
                 if parsed.path in ("/say", "/command"):
                     try:
