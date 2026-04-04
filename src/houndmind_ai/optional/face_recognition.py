@@ -104,11 +104,11 @@ class FaceRecognitionModule(Module):
 
     def _init_lbph(self, settings: dict) -> None:
         lbph_settings = settings.get("lbph", {})
-        if not lbph_settings.get("enabled", True) or not hasattr(self._cv2, "face"):
+        if not lbph_settings.get("enabled", True) or not hasattr(self._cv2, "face"):  # type: ignore[union-attr]
             return
 
         try:
-            self._recognizer = self._cv2.face.LBPHFaceRecognizer_create()  # type: ignore[attr-defined]
+            self._recognizer = self._cv2.face.LBPHFaceRecognizer_create()  # type: ignore[union-attr,attr-defined]
         except Exception as exc:  # noqa: BLE001
             logger.warning("LBPH unavailable: %s", exc)
             self._recognizer = None
