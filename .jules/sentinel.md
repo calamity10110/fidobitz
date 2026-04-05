@@ -25,3 +25,8 @@
 **Vulnerability:** The TelemetryDashboardModule returned sensitive file payloads (`application/json` and `application/zip`) via endpoints without the `Content-Disposition: attachment` header.
 **Learning:** Relying solely on the frontend client (e.g. `a.download`) to enforce download behavior allows browsers to potentially render payloads directly if a user navigates manually. For JSON payloads, this exposes the application to potential MIME-sniffing or XSS if the data were mishandled.
 **Prevention:** Always pair `Content-Type` headers with `Content-Disposition: attachment; filename="..."` when serving data intended exclusively for download.
+
+## 2025-04-05 - Memory Exhaustion / DoS via Unbounded Content-Length
+**Vulnerability:** The HTTP handlers in `FaceRecognitionModule` and `VoiceModule` read POST payload bodies using `self.rfile.read(length)` directly based on the user-supplied `Content-Length` header without validating the length first. This allowed attackers to specify arbitrarily large numbers, leading to an immediate Memory Exhaustion or Denial of Service (DoS) as the server attempted to allocate unbounded memory or hang.
+**Learning:** `BaseHTTPRequestHandler` reads execute synchronously. Always validate and enforce a strict upper limit on the `Content-Length` header before attempting to read payload bodies.
+**Prevention:** Always check `length = int(self.headers.get("Content-Length", "0"))` against a reasonable maximum (e.g., 1MB) and return `413 Payload Too Large` immediately if it is exceeded.
