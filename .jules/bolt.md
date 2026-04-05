@@ -28,3 +28,7 @@
 ## 2024-05-18 - Avoid String Key Overhead in Coordinate Dictionaries
 **Learning:** For in-memory spatial mapping dictionaries (like `grid['cells']`), using formatted strings `f'{ix},{iy}'` as keys introduces severe performance penalties. Every insertion incurs string formatting overhead, and every read/evaluation requires string splitting (`k.split(',')`) and integer casting (`int()`).
 **Action:** Use native tuple keys `(ix, iy)` instead of formatted strings. Tuples are natively supported as dictionary keys in Python and hash efficiently, completely bypassing the formatting and parsing overhead during high-frequency navigation/mapping loops. Ensure legacy compatibility when reading the dictionary if string keys might be present from saved states.
+
+## 2025-02-15 - Pre-allocating coordinate offsets in high-frequency loops
+**Learning:** In tight inner loops (like A* neighbor evaluation), dynamically allocating nested coordinate tuples (e.g., `((x - 1, y), (x + 1, y), ...)`) incurs measurable Python interpreter overhead.
+**Action:** Replace dynamically allocated tuple groups with a constant pre-allocated tuple of coordinate offsets (e.g., `OFFSETS = ((-1, 0), (1, 0), ...)`). Compute new coordinates using standard arithmetic (`nx, ny = x + dx, y + dy`) inside the loop. This completely bypasses the secondary memory allocations and improves throughput.
