@@ -294,6 +294,9 @@ class FaceRecognitionModule(Module):
                     return
 
                 length = int(self.headers.get("Content-Length", "0"))
+                if length > 10485760:  # 10MB limit to prevent DoS with large images
+                    self._send_json({"error": "Payload too large"}, status=413)
+                    return
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
                 if parsed.path == "/enroll":
                     try:
