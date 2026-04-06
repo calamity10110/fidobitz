@@ -197,9 +197,9 @@ class MappingModule(Module):
         # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
         # overhead for the vast majority of cached integer degree lookups.
         for key, raw in angles.items():
-            str_key = str(key)
-            if str_key in trig_cache_str:
-                c, s = trig_cache_str[str_key]
+            cached = trig_cache_str.get(key)
+            if cached is not None:
+                c, s = cached
                 try:
                     dist = float(raw)
                 except Exception:
@@ -207,17 +207,27 @@ class MappingModule(Module):
                 if dist <= 0:
                     continue
             else:
-                try:
-                    yaw = int(float(key))
-                    dist = float(raw)
-                except Exception:
-                    continue
-                if dist <= 0:
-                    continue
-                # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
-                # degrees where 0 = forward, positive = left.
-                rad = math.radians(yaw)
-                c, s = math.cos(rad), math.sin(rad)
+                str_key = str(key)
+                if str_key in trig_cache_str:
+                    c, s = trig_cache_str[str_key]
+                    try:
+                        dist = float(raw)
+                    except Exception:
+                        continue
+                    if dist <= 0:
+                        continue
+                else:
+                    try:
+                        yaw = int(float(key))
+                        dist = float(raw)
+                    except Exception:
+                        continue
+                    if dist <= 0:
+                        continue
+                    # Convert polar (distance cm, yaw deg) to grid indices. Yaw is
+                    # degrees where 0 = forward, positive = left.
+                    rad = math.radians(yaw)
+                    c, s = math.cos(rad), math.sin(rad)
 
             # ⚡ Bolt: Avoid multiple multiplications per iteration by combining
             # distance with the inverted cell size scalar early.
