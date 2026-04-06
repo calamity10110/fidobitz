@@ -28,3 +28,6 @@
 ## 2024-05-18 - Avoid String Key Overhead in Coordinate Dictionaries
 **Learning:** For in-memory spatial mapping dictionaries (like `grid['cells']`), using formatted strings `f'{ix},{iy}'` as keys introduces severe performance penalties. Every insertion incurs string formatting overhead, and every read/evaluation requires string splitting (`k.split(',')`) and integer casting (`int()`).
 **Action:** Use native tuple keys `(ix, iy)` instead of formatted strings. Tuples are natively supported as dictionary keys in Python and hash efficiently, completely bypassing the formatting and parsing overhead during high-frequency navigation/mapping loops. Ensure legacy compatibility when reading the dictionary if string keys might be present from saved states.
+## 2024-05-19 - Defer dictionary allocation in high-frequency loops
+**Learning:** In high-frequency data ingestion loops (like analyzing hundreds of LiDAR scan points), unconditionally allocating dictionaries before validating if they meet necessary criteria causes significant memory churn and garbage collection overhead.
+**Action:** Always evaluate conditions first and defer dictionary allocation. Additionally, replace division operations with reciprocal multiplication (e.g., `* 0.005` instead of `/ 200.0`) for measurable speed improvements.

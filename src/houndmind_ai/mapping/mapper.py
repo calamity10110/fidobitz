@@ -249,15 +249,16 @@ class MappingModule(Module):
         min_safe_conf = float(settings.get("safe_path_cell_conf_min", 0.5))
 
         items = []
+        # ⚡ Bolt: Localize append method for performance in tight loop
+        append_item = items.append
         for key, dist in angles.items():
             try:
-                yaw = int(float(key))
+                # ⚡ Bolt: 'Fast path' try-except block, check distance > 0 directly
                 distance = float(dist)
+                if distance > 0:
+                    append_item((int(float(key)), distance))
             except Exception:
-                continue
-            if distance <= 0:
-                continue
-            items.append((yaw, distance))
+                pass
 
         if not items:
             return [], [], None
@@ -265,6 +266,9 @@ class MappingModule(Module):
         items.sort(key=lambda it: it[0])
         openings: list[dict] = []
         safe_paths: list[dict] = []
+        # ⚡ Bolt: Localize list appends
+        append_open = openings.append
+        append_safe = safe_paths.append
 
         step_deg = float(settings.get("scan_step_deg", 0.0))
         if step_deg <= 0.0 and len(items) > 1:
@@ -277,26 +281,29 @@ class MappingModule(Module):
             step_deg = 15.0
 
         width_multiplier = step_deg * 0.0174533
+        # ⚡ Bolt: Replace division by 200.0 with reciprocal multiplication
+        inv_200 = 0.005
 
         for yaw, dist in items:
-            width_cm = dist * width_multiplier if dist > 0 else 0.0
-            conf = dist / 200.0 if dist < 200.0 else 1.0
-            entry = {
-                "yaw": yaw,
-                "distance_cm": dist,
-                "width_cm": width_cm,
-                "confidence": conf,
-            }
-            if (
-                min_open_width_cm <= width_cm <= max_open_width_cm
-                and conf >= min_open_conf
-            ):
-                openings.append(entry)
-            if (
-                min_safe_width_cm <= width_cm <= max_safe_width_cm
-                and conf >= min_safe_conf
-            ):
-                safe_paths.append(entry)
+            # dist is guaranteed > 0 from the filtering loop above
+            width_cm = dist * width_multiplier
+            conf = dist * inv_200 if dist < 200.0 else 1.0
+
+            # ⚡ Bolt: Defer dictionary allocation until after condition checks
+            is_open = (min_open_width_cm <= width_cm <= max_open_width_cm) and (conf >= min_open_conf)
+            is_safe = (min_safe_width_cm <= width_cm <= max_safe_width_cm) and (conf >= min_safe_conf)
+
+            if is_open or is_safe:
+                entry = {
+                    "yaw": yaw,
+                    "distance_cm": dist,
+                    "width_cm": width_cm,
+                    "confidence": conf,
+                }
+                if is_open:
+                    append_open(entry)
+                if is_safe:
+                    append_safe(entry)
 
         best_path = None
         if safe_paths:
