@@ -25,3 +25,11 @@
 **Vulnerability:** The TelemetryDashboardModule returned sensitive file payloads (`application/json` and `application/zip`) via endpoints without the `Content-Disposition: attachment` header.
 **Learning:** Relying solely on the frontend client (e.g. `a.download`) to enforce download behavior allows browsers to potentially render payloads directly if a user navigates manually. For JSON payloads, this exposes the application to potential MIME-sniffing or XSS if the data were mishandled.
 **Prevention:** Always pair `Content-Type` headers with `Content-Disposition: attachment; filename="..."` when serving data intended exclusively for download.
+## 2024-04-06 - Memory Exhaustion / DoS Vulnerability in Optional HTTP Handlers
+**Vulnerability:** The HTTP handlers for the optional `face_recognition` and `voice` modules lacked a maximum limit on the `Content-Length` header. This allowed malicious clients to send requests with extremely large payloads, which could lead to Memory Exhaustion (OOM) and a Denial of Service when the server synchronously called `self.rfile.read(length)`.
+**Learning:** In `http.server.BaseHTTPRequestHandler` subclasses,  executes synchronously and blocks, attempting to load the entire payload into memory at once if no limit is enforced.
+**Prevention:** Always validate and enforce a strict upper limit on the `Content-Length` header before reading the payload (e.g., 1MB for text endpoints) to prevent Memory Exhaustion DoS vulnerabilities.
+## 2024-04-06 - Memory Exhaustion / DoS Vulnerability in Optional HTTP Handlers
+**Vulnerability:** The HTTP handlers for the optional `face_recognition` and `voice` modules lacked a maximum limit on the `Content-Length` header. This allowed malicious clients to send requests with extremely large payloads, which could lead to Memory Exhaustion (OOM) and a Denial of Service when the server synchronously called `self.rfile.read(length)`.
+**Learning:** In `http.server.BaseHTTPRequestHandler` subclasses, `rfile.read(length)` executes synchronously and blocks, attempting to load the entire payload into memory at once if no limit is enforced.
+**Prevention:** Always validate and enforce a strict upper limit on the `Content-Length` header before reading the payload (e.g., 1MB for text endpoints) to prevent Memory Exhaustion DoS vulnerabilities.
