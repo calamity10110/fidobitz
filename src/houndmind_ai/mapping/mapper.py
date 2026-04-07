@@ -258,7 +258,7 @@ class MappingModule(Module):
         max_safe_width_cm = float(settings.get("safe_path_max_width_cm", 200))
         min_safe_conf = float(settings.get("safe_path_cell_conf_min", 0.5))
 
-        items = []
+        items: list[tuple[int, float]] = []
         # ⚡ Bolt: Localize append method for performance in tight loop
         append_item = items.append
         for key, dist in angles.items():
