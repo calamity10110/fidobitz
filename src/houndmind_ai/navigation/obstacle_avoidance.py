@@ -792,8 +792,9 @@ class ObstacleAvoidanceModule(Module):
         if repeat <= 0:
             return direction
         count = 0
-        for i in range(len(self._no_go_history) - 1, -1, -1):
-            ts, d = self._no_go_history[i]
+        # ⚡ Bolt: Use reversed() for O(N) reverse iteration.
+        # Avoids O(N^2) memory access penalties of indexed iteration on deques.
+        for ts, d in reversed(self._no_go_history):
             if now - ts > window_s:
                 break
             if d == direction:
@@ -856,8 +857,10 @@ class ObstacleAvoidanceModule(Module):
         repeat_threshold = int(settings.get("stuck_strategy_repeat_threshold", 3))
         now = time.time()
         count = 0
-        for i in range(len(self._avoid_history) - 1, -1, -1):
-            if now - self._avoid_history[i] > repeat_window:
+        # ⚡ Bolt: Use reversed() for O(N) reverse iteration.
+        # Avoids O(N^2) memory access penalties of indexed iteration on deques.
+        for ts in reversed(self._avoid_history):
+            if now - ts > repeat_window:
                 break
             count += 1
         if count >= repeat_threshold:
