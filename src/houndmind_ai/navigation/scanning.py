@@ -58,6 +58,10 @@ class ScanningService:
         self._history: list[ScanReading] = []
         self._interval_override: float | None = None
 
+        # ⚡ Bolt: Cache method lookup to avoid hasattr in hot loop
+        self._has_wait_head_done = hasattr(self._dog, "wait_head_done")
+        self._has_read_distance = hasattr(self._dog, "read_distance")
+
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
@@ -194,14 +198,14 @@ class ScanningService:
 
     def _head_move(self, yaw: int, speed: int) -> None:
         self._dog.head_move([[int(yaw), 0, 0]], speed=speed)
-        if hasattr(self._dog, "wait_head_done"):
+        if self._has_wait_head_done:
             self._dog.wait_head_done()
         time.sleep(0.05)
 
     def _read_distance(self, samples: int, between_reads_s: float) -> float:
         values: list[float] = []
         for _ in range(max(1, samples)):
-            if hasattr(self._dog, "read_distance"):
+            if self._has_read_distance:
                 value = self._dog.read_distance()
             else:
                 value = self._dog.ultrasonic.read_distance()

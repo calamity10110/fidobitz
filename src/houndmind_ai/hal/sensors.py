@@ -81,6 +81,9 @@ class SensorService:
         self._acc_lpf: tuple[float, float, float] | None = None
         self._gyro_lpf: tuple[float, float, float] | None = None
 
+        # ⚡ Bolt: Cache method lookup to avoid hasattr in hot loop
+        self._has_read_distance = hasattr(self._dog, "read_distance")
+
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
@@ -196,7 +199,7 @@ class SensorService:
         values: list[float] = []
         for _ in range(samples):
             try:
-                if hasattr(self._dog, "read_distance"):
+                if self._has_read_distance:
                     value = float(self._dog.read_distance())
                 else:
                     value = float(self._dog.ultrasonic.read_distance())

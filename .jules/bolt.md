@@ -31,3 +31,6 @@
 ## 2024-05-19 - Defer dictionary allocation in high-frequency loops
 **Learning:** In high-frequency data ingestion loops (like analyzing hundreds of LiDAR scan points), unconditionally allocating dictionaries before validating if they meet necessary criteria causes significant memory churn and garbage collection overhead.
 **Action:** Always evaluate conditions first and defer dictionary allocation. Additionally, replace division operations with reciprocal multiplication (e.g., `* 0.005` instead of `/ 200.0`) for measurable speed improvements.
+## 2025-02-15 - Loop-Invariant Code Motion (hasattr Hoisting)
+**Learning:** In high-frequency polling loops (like the `SensorService` and `ScanningService` threads that evaluate distances and motor statuses up to 30 times a second), performing reflection-like dynamic method checks (e.g. `hasattr(self._dog, "read_distance")`) inside the iteration blocks wastes CPU cycles. Since the object graph for hardware interfaces is essentially immutable after initialization, these checks never change state at runtime.
+**Action:** Apply Loop-Invariant Code Motion. Evaluate and cache the results of dynamic presence checks (like `hasattr`) in the object's `__init__` method (e.g., `self._has_read_distance = hasattr(self._dog, "read_distance")`) and use the cached boolean inside the high-frequency loops to improve execution speed.
