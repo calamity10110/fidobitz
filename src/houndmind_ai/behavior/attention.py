@@ -28,6 +28,7 @@ class AttentionModule(Module):
     def __init__(self, name: str, enabled: bool = True, required: bool = False) -> None:
         super().__init__(name, enabled=enabled, required=required)
         self._last_attention_ts = 0.0
+        self._has_wait_head_done: bool | None = None
 
     def tick(self, context) -> None:
         settings = (context.get("settings") or {}).get("attention", {})
@@ -72,7 +73,9 @@ class AttentionModule(Module):
 
         try:
             dog.head_move([[yaw, 0, 0]], speed=int(settings.get("head_turn_speed", 70)))
-            if hasattr(dog, "wait_head_done"):
+            if self._has_wait_head_done is None:
+                self._has_wait_head_done = hasattr(dog, "wait_head_done")
+            if self._has_wait_head_done:
                 dog.wait_head_done()
         except Exception as exc:  # noqa: BLE001
             logger.debug("Attention head move failed: %s", exc)

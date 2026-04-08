@@ -34,3 +34,7 @@
 ## 2025-02-15 - Loop-Invariant Code Motion (hasattr Hoisting)
 **Learning:** In high-frequency polling loops (like the `SensorService` and `ScanningService` threads that evaluate distances and motor statuses up to 30 times a second), performing reflection-like dynamic method checks (e.g. `hasattr(self._dog, "read_distance")`) inside the iteration blocks wastes CPU cycles. Since the object graph for hardware interfaces is essentially immutable after initialization, these checks never change state at runtime.
 **Action:** Apply Loop-Invariant Code Motion. Evaluate and cache the results of dynamic presence checks (like `hasattr`) in the object's `__init__` method (e.g., `self._has_read_distance = hasattr(self._dog, "read_distance")`) and use the cached boolean inside the high-frequency loops to improve execution speed.
+
+## 2025-02-15 - Method Reference Localization in Hot Loops
+**Learning:** Re-evaluating global dictionary method references like `dict.get` continuously within tight loops (like mapping ingestion) incurs significant interpreter overhead for attribute lookups.
+**Action:** Localize dictionary method references (e.g., `cache_get = trig_cache_str.get`) outside of hot loops to reduce continuous lookup overhead and improve execution speed.

@@ -174,7 +174,6 @@ class MappingModule(Module):
         if not isinstance(angles, dict) or not angles:
             return
         cell_size_cm = float(settings.get("cell_size_cm", 10.0))
-        inv_cell_size = 1.0 / cell_size_cm if cell_size_cm else 0.0
         grid_size = settings.get("grid_size", [100, 100])
         try:
             gx = int(grid_size[0])
@@ -193,11 +192,13 @@ class MappingModule(Module):
         # Localize cache lookup to avoid self. overhead
         trig_cache_str = self._TRIG_CACHE_STR
 
-        # ⚡ Bolt: Optimize cache lookup by doing str(key) check BEFORE parsing
+        # ⚡ Bolt: Localize dictionary get and optimize cache lookup by doing str(key) check BEFORE parsing
         # float/int values for yaw. This avoids `float()`, `int()`, and `str()`
         # overhead for the vast majority of cached integer degree lookups.
+        cache_get = trig_cache_str.get
+        cells_get = cells.get
         for key, raw in angles.items():
-            cached = trig_cache_str.get(key)
+            cached = cache_get(key)
             if cached is not None:
                 c, s = cached
                 try:
@@ -239,7 +240,7 @@ class MappingModule(Module):
             if abs(ix) > half_x or abs(iy) > half_y:
                 continue
             k = (ix, iy)
-            cells[k] = cells.get(k, 0) + 1
+            cells[k] = cells_get(k, 0) + 1
 
         grid["cells"] = cells
         mapping_state["grid"] = grid
