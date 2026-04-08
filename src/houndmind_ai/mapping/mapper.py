@@ -198,25 +198,9 @@ class MappingModule(Module):
         # overhead for the vast majority of cached integer degree lookups.
         for key, raw in angles.items():
             cached = trig_cache_str.get(key)
-            if cached is not None:
-                c, s = cached
-                try:
-                    dist = float(raw)
-                except Exception:
-                    continue
-                if dist <= 0:
-                    continue
-            else:
-                str_key = str(key)
-                if str_key in trig_cache_str:
-                    c, s = trig_cache_str[str_key]
-                    try:
-                        dist = float(raw)
-                    except Exception:
-                        continue
-                    if dist <= 0:
-                        continue
-                else:
+            if cached is None:
+                cached = trig_cache_str.get(str(key))
+                if cached is None:
                     try:
                         yaw = int(float(key))
                         dist = float(raw)
@@ -228,12 +212,27 @@ class MappingModule(Module):
                     # degrees where 0 = forward, positive = left.
                     rad = math.radians(yaw)
                     c, s = math.cos(rad), math.sin(rad)
+                    dist_inv = dist * inv_cell_size
+                    ix = round(dist_inv * s)  # left
+                    iy = round(dist_inv * c)  # forward
+                    if abs(ix) <= half_x and abs(iy) <= half_y:
+                        k = (ix, iy)
+                        cells[k] = cells.get(k, 0) + 1
+                    continue
 
+            try:
+                dist = float(raw)
+            except Exception:
+                continue
+            if dist <= 0:
+                continue
+
+            c, s = cached
             # ⚡ Bolt: Avoid multiple multiplications per iteration by combining
             # distance with the inverted cell size scalar early.
             dist_inv = dist * inv_cell_size
-            ix = int(round(dist_inv * s))  # left
-            iy = int(round(dist_inv * c))  # forward
+            ix = round(dist_inv * s)  # left
+            iy = round(dist_inv * c)  # forward
 
             # Bound to grid size
             if abs(ix) > half_x or abs(iy) > half_y:
