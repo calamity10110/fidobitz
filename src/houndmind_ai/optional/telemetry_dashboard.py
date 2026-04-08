@@ -110,7 +110,8 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
         except Exception as exc:  # noqa: BLE001
-            self._send_json({"error": str(exc)}, status=500)
+            logger.exception("Error during support bundle download: %s", exc)
+            self._send_json({"error": "Internal server error"}, status=500)
 
     def _handle_download_slam_trajectory(self) -> None:
         data = self.module._snapshot.get("slam_trajectory")
