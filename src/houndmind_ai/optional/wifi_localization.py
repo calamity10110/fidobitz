@@ -12,6 +12,9 @@ from houndmind_ai.core.module import Module
 
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class WifiLocalizationModule(Module):
@@ -73,8 +76,9 @@ class WifiLocalizationModule(Module):
             output = subprocess.check_output(
                 ["netsh", "wlan", "show", "networks", "mode=Bssid"], encoding="utf-8"
             )
-        except Exception as exc:
-            return {"error": str(exc)}
+        except Exception:
+            logger.exception("Failed to scan WiFi networks")
+            return {"error": "Internal server error"}
         networks = []
         ssid = None
         for line in output.splitlines():
