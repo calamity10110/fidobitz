@@ -4,6 +4,8 @@ A* path planning for grid/graph maps (for Pi4).
 
 import heapq
 
+_DIRECTIONS = ((-1, 0), (1, 0), (0, -1), (0, 1))
+
 
 def astar(grid, start, goal, passable=lambda v: v == 0):
     """
@@ -53,7 +55,9 @@ def astar(grid, start, goal, passable=lambda v: v == 0):
         x, y = node
         tentative_g = cost + 1
 
-        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+        # ⚡ Bolt: Iterate over pre-allocated directions to prevent inner loop tuple allocation
+        for dx, dy in _DIRECTIONS:
+            nx, ny = x + dx, y + dy
             if 0 <= nx < w and 0 <= ny < h and passable(grid[ny][nx]):
                 neighbor = (nx, ny)
                 if tentative_g < get_g(neighbor, inf):
