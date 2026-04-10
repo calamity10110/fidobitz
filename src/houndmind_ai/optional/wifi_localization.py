@@ -8,6 +8,7 @@ import threading
 import time
 import subprocess
 import re
+import logging
 from houndmind_ai.core.module import Module
 
 import json
@@ -73,8 +74,10 @@ class WifiLocalizationModule(Module):
             output = subprocess.check_output(
                 ["netsh", "wlan", "show", "networks", "mode=Bssid"], encoding="utf-8"
             )
-        except Exception as exc:
-            return {"error": str(exc)}
+        except Exception:
+            # We fail silently and log it internally if we want, but typically wifi tools return errors
+            logging.getLogger(__name__).exception("Failed to scan wifi networks")
+            return {"error": "Internal server error"}
         networks = []
         ssid = None
         for line in output.splitlines():

@@ -29,3 +29,8 @@
 **Vulnerability:** Unbounded `rfile.read(length)` without checking the `Content-Length` header in BaseHTTPRequestHandler subclasses (`FaceRecognitionModule`, `VoiceModule`).
 **Learning:** Python's built-in `http.server` handles `rfile.read` synchronously, and passing an enormous size can cause the server to block entirely while loading data into memory, creating a DoS (Denial of Service) vector via Memory Exhaustion (OOM).
 **Prevention:** Always validate the `Content-Length` header before invoking `rfile.read()` to ensure the payload is under a safe max limit. Set boundaries (e.g. 1MB for text, 10MB for images) and return a `413 Payload Too Large` error for oversized requests.
+
+## 2025-03-01 - Prevent Raw Exception String Leaks in HTTP/JSON Responses
+**Vulnerability:** The codebase occasionally logged or caught exceptions and directly serialized `str(exc)` into HTTP JSON responses (`{"error": str(exc)}`), bypassing standard safe fallback practices. This was found in telemetry download APIs and WiFi localization sub-calls.
+**Learning:** Returning `str(exc)` back to users via API endpoints can easily leak internal system states, OS-level filesystem paths, or Python stack variables.
+**Prevention:** Catch all exceptions securely, print them server-side using `logger.exception(...)`, and return a constant, generic safe response like `"Internal server error"`.

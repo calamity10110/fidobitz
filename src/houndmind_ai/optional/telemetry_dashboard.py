@@ -109,8 +109,9 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
             self.send_header("X-Frame-Options", "DENY")
             self.end_headers()
             self.wfile.write(data)
-        except Exception as exc:  # noqa: BLE001
-            self._send_json({"error": str(exc)}, status=500)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to read or send support bundle for trace %s", req_trace)
+            self._send_json({"error": "Internal server error"}, status=500)
 
     def _handle_download_slam_trajectory(self) -> None:
         data = self.module._snapshot.get("slam_trajectory")
