@@ -61,6 +61,17 @@ class ScanningService:
         # ⚡ Bolt: Cache method lookup to avoid hasattr in hot loop
         self._has_wait_head_done = hasattr(self._dog, "wait_head_done")
         self._has_read_distance = hasattr(self._dog, "read_distance")
+        if self._dog is None:
+            self._read_distance_func = lambda: None
+            self._wait_head_done_func = None
+        else:
+            self._wait_head_done_func = (
+                self._dog.wait_head_done if self._has_wait_head_done else None
+            )
+            if self._has_read_distance:
+                self._read_distance_func = self._dog.read_distance
+            else:
+                self._read_distance_func = self._dog.ultrasonic.read_distance
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -198,25 +209,23 @@ class ScanningService:
 
     def _head_move(self, yaw: int, speed: int) -> None:
         self._dog.head_move([[int(yaw), 0, 0]], speed=speed)
-        if self._has_wait_head_done:
-            self._dog.wait_head_done()
+        if self._wait_head_done_func:
+            self._wait_head_done_func()
         time.sleep(0.05)
 
     def _read_distance(self, samples: int, between_reads_s: float) -> float:
         values: list[float] = []
+        delay_s = _safe_float(between_reads_s, 0.0)
         for _ in range(max(1, samples)):
-            if self._has_read_distance:
-                value = self._dog.read_distance()
-            else:
-                value = self._dog.ultrasonic.read_distance()
+            value = self._read_distance_func()
             try:
                 val = float(value)
             except Exception:
                 val = 0.0
             if val > 0:
                 values.append(val)
-            if between_reads_s:
-                time.sleep(_safe_float(between_reads_s, 0.0))
+            if delay_s > 0:
+                time.sleep(delay_s)
         if not values:
             return 0.0
         values.sort()

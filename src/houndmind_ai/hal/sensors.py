@@ -83,6 +83,12 @@ class SensorService:
 
         # ⚡ Bolt: Cache method lookup to avoid hasattr in hot loop
         self._has_read_distance = hasattr(self._dog, "read_distance")
+        if self._dog is None:
+            self._read_distance_func = lambda: None
+        elif self._has_read_distance:
+            self._read_distance_func = self._dog.read_distance
+        else:
+            self._read_distance_func = self._dog.ultrasonic.read_distance
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -199,10 +205,7 @@ class SensorService:
         values: list[float] = []
         for _ in range(samples):
             try:
-                if self._has_read_distance:
-                    value = float(self._dog.read_distance())
-                else:
-                    value = float(self._dog.ultrasonic.read_distance())
+                value = float(self._read_distance_func())
             except Exception:  # noqa: BLE001
                 logger.debug("Ultrasonic read failed", exc_info=True)
                 value = None
