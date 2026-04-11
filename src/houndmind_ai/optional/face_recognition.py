@@ -104,7 +104,11 @@ class FaceRecognitionModule(Module):
 
     def _init_lbph(self, settings: dict) -> None:
         lbph_settings = settings.get("lbph", {})
-        if not lbph_settings.get("enabled", True) or self._cv2 is None or not hasattr(self._cv2, "face"):
+        if (
+            not lbph_settings.get("enabled", True)
+            or self._cv2 is None
+            or not hasattr(self._cv2, "face")
+        ):
             return
 
         try:

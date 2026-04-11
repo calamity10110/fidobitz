@@ -219,7 +219,7 @@ class ScanningService:
         for _ in range(max(1, samples)):
             value = self._read_distance_func()
             try:
-                val = float(value)
+                val = float(value) if value is not None else 0.0
             except Exception:
                 val = 0.0
             if val > 0:
