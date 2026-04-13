@@ -110,7 +110,9 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
         except Exception:  # noqa: BLE001
-            logger.exception("Failed to read or send support bundle for trace %s", req_trace)
+            logger.exception(
+                "Failed to read or send support bundle for trace %s", req_trace
+            )
             self._send_json({"error": "Internal server error"}, status=500)
 
     def _handle_download_slam_trajectory(self) -> None:

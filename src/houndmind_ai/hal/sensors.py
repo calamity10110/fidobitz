@@ -205,7 +205,8 @@ class SensorService:
         values: list[float] = []
         for _ in range(samples):
             try:
-                value = float(self._read_distance_func())
+                raw = self._read_distance_func()
+                value = float(raw) if raw is not None else None
             except Exception:  # noqa: BLE001
                 logger.debug("Ultrasonic read failed", exc_info=True)
                 value = None

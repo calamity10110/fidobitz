@@ -8,8 +8,6 @@ if "cv2" not in sys.modules:
     sys.modules["cv2"] = MagicMock()
 if "numpy" not in sys.modules:
     sys.modules["numpy"] = MagicMock()
-if "pidog" not in sys.modules:
-    sys.modules["pidog"] = MagicMock()
 
 from houndmind_ai.core.config import load_config
 from houndmind_ai.core.runtime import HoundMindRuntime
