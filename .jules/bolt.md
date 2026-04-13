@@ -37,3 +37,7 @@
 ## 2025-02-15 - Unsafe optimizations in cold paths
 **Learning:** Optimizing away safe-casting helper functions (like `_safe_int` or `_safe_float`) inside hardware movement logic (which is often a slow path due to mechanical delays like `time.sleep()`) yields virtually zero performance gain. Furthermore, blindly replacing these helpers with raw `int()` or `float()` casts can introduce critical `ValueError` or `TypeError` crashes if invalid data (e.g. string values) are supplied, violating the fault-tolerance guarantees of the application.
 **Action:** When optimizing type-casting in Python, do not replace safe-handling helper functions with native `int()` or `float()` calls without explicitly guaranteeing input validity first. Avoid optimizing these type-conversions inside cold paths (like mechanical movement loops) where the risk outweighs the microsecond benefits.
+
+## 2024-04-13 - Dynamic tuple allocation in hot loops
+**Learning:** In tight inner loops (like A* neighbor evaluation), dynamically allocating inline nested coordinate tuples (e.g., `((x - 1, y), ...)` for 4-way movement) incurs significant interpreter overhead due to tuple creation on every single iteration.
+**Action:** Replace dynamically created tuples with pre-allocated constant coordinate offset tuples (e.g., `offsets = ((-1, 0), (1, 0), ...)` defined outside the loop) and compute coordinates using basic arithmetic (`nx = x + dx`) inside the loop to bypass the allocation bottleneck.
