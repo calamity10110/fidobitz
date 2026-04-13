@@ -232,8 +232,8 @@ class MappingModule(Module):
             # ⚡ Bolt: Avoid multiple multiplications per iteration by combining
             # distance with the inverted cell size scalar early.
             dist_inv = dist * inv_cell_size
-            ix = int(round(dist_inv * s))  # left
-            iy = int(round(dist_inv * c))  # forward
+            ix = round(dist_inv * s)  # left
+            iy = round(dist_inv * c)  # forward
 
             # Bound to grid size
             if abs(ix) > half_x or abs(iy) > half_y:
