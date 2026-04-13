@@ -300,8 +300,12 @@ class MappingModule(Module):
             conf = dist * inv_200 if dist < 200.0 else 1.0
 
             # ⚡ Bolt: Defer dictionary allocation until after condition checks
-            is_open = (min_open_width_cm <= width_cm <= max_open_width_cm) and (conf >= min_open_conf)
-            is_safe = (min_safe_width_cm <= width_cm <= max_safe_width_cm) and (conf >= min_safe_conf)
+            is_open = (min_open_width_cm <= width_cm <= max_open_width_cm) and (
+                conf >= min_open_conf
+            )
+            is_safe = (min_safe_width_cm <= width_cm <= max_safe_width_cm) and (
+                conf >= min_safe_conf
+            )
 
             if is_open or is_safe:
                 entry = {
