@@ -719,9 +719,11 @@ class ObstacleAvoidanceModule(Module):
             if iy < 0 or iy > depth_cells:
                 continue
             if ix < 0:
-                left_count += int(v or 0)
+                # ⚡ Bolt: Inline ternary `int(v) if v else 0` avoids implicit secondary evaluation
+                # overhead compared to `int(v or 0)`, speeding up hot loop tallying.
+                left_count += int(v) if v else 0
             elif ix > 0:
-                right_count += int(v or 0)
+                right_count += int(v) if v else 0
 
         total = left_count + right_count
         if total <= 0:
