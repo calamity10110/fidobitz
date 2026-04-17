@@ -112,7 +112,7 @@ class FaceRecognitionModule(Module):
             return
 
         try:
-            self._recognizer = self._cv2.face.LBPHFaceRecognizer_create()  # type: ignore[attr-defined,union-attr]
+            self._recognizer = self._cv2.face.LBPHFaceRecognizer_create()  # type: ignore[attr-defined, union-attr]
         except Exception as exc:  # noqa: BLE001
             logger.warning("LBPH unavailable: %s", exc)
             self._recognizer = None
