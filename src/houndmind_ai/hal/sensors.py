@@ -310,25 +310,26 @@ class SensorService:
             return None, None, False
         alpha = _safe_float(self._settings.get("imu_lpf_alpha", 0.0), 0.0)
         if 0.0 < alpha <= 1.0:
+            # ⚡ Bolt: Unroll low-pass filter calculation manually on the 3-element IMU tuples.
+            # Avoids tuple(), zip(), and generator expression overhead in this high-frequency loop.
+            inv_alpha = 1.0 - alpha
             if self._acc_lpf is None:
                 self._acc_lpf = cast(Tuple[float, float, float], acc)
             else:
-                self._acc_lpf = cast(
-                    Tuple[float, float, float],
-                    tuple(
-                        (1 - alpha) * prev + alpha * cur
-                        for prev, cur in zip(self._acc_lpf, acc)
-                    ),
+                prev_acc = self._acc_lpf
+                self._acc_lpf = (
+                    inv_alpha * prev_acc[0] + alpha * acc[0],
+                    inv_alpha * prev_acc[1] + alpha * acc[1],
+                    inv_alpha * prev_acc[2] + alpha * acc[2],
                 )
             if self._gyro_lpf is None:
                 self._gyro_lpf = cast(Tuple[float, float, float], gyro)
             else:
-                self._gyro_lpf = cast(
-                    Tuple[float, float, float],
-                    tuple(
-                        (1 - alpha) * prev + alpha * cur
-                        for prev, cur in zip(self._gyro_lpf, gyro)
-                    ),
+                prev_gyro = self._gyro_lpf
+                self._gyro_lpf = (
+                    inv_alpha * prev_gyro[0] + alpha * gyro[0],
+                    inv_alpha * prev_gyro[1] + alpha * gyro[1],
+                    inv_alpha * prev_gyro[2] + alpha * gyro[2],
                 )
             acc = self._acc_lpf
             gyro = self._gyro_lpf

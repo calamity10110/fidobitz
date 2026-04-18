@@ -40,3 +40,7 @@
 ## 2025-02-15 - Removed redundant int() casts around round()
 **Learning:** In Python 3, the `round(x)` built-in function returns an integer when called with a single argument. Therefore, casting it explicitly via `int(round(x))` is an unnecessary, redundant operation that introduces measurable function call overhead.
 **Action:** When rounding values to integers in performance-critical loops (like calculating mapping coordinates), simply use `round(x)` and assign it to an integer variable. Do not wrap it in `int()`.
+
+## 2024-05-18 - Unrolled Tuple Math in Hot Loops
+**Learning:** Generator expressions inside `tuple()` combined with `zip()` (e.g., `tuple(a + b for a, b in zip(t1, t2))`) introduce significant function call and iterator setup overhead in high-frequency Python loops.
+**Action:** When performing element-wise math on small, fixed-length tuples (like 3-element IMU vectors), unroll the logic manually via direct index access (e.g., `(t1[0] + t2[0], t1[1] + t2[1], t1[2] + t2[2])`). This avoids the iterator overhead and executes noticeably faster.
