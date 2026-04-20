@@ -593,8 +593,8 @@ class ObstacleAvoidanceModule(Module):
         if self._confirm_votes.maxlen != confirm_window:
             self._confirm_votes = deque(self._confirm_votes, maxlen=confirm_window)
         self._confirm_votes.append(direction)
-        counts = Counter(self._confirm_votes)
-        confirm_count = counts.get(direction, 0)
+        # ⚡ Bolt: Use native count() to avoid Counter dict allocation in hot loop
+        confirm_count = self._confirm_votes.count(direction)
         confirmed = confirm_count >= confirm_threshold
         if confirm_window > 0:
             confidence = confirm_count / confirm_window

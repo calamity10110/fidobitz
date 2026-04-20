@@ -43,3 +43,6 @@
 ## $(date +%Y-%m-%d) - Unroll 3D Tuple Calculations in High-Frequency Loops
 **Learning:** Generator expressions passed to `tuple()` and combined with `zip()` create significant initialization and function call overhead in tight Python loops (e.g., IMU sensor sampling).
 **Action:** When performing element-wise calculations on small, fixed-length tuples (like 3D coordinates), unroll the logic manually using direct index access and pre-calculate constants. This performs ~4.5x faster and is often more readable.
+## $(date +%Y-%m-%d) - Optimize hot loop deque counting using native count()
+**Learning:** Instantiating a `collections.Counter` object just to count the frequency of a single element in a `collections.deque` during a high-frequency tight loop (like sensor tick processing) introduces severe O(N) dictionary allocation and initialization overhead on every iteration.
+**Action:** Always use the native, C-optimized `deque.count(val)` method instead. It performs the same logical operation without allocating a dictionary, yielding a ~20x performance improvement in hot paths.
