@@ -208,8 +208,9 @@ class MappingModule(Module):
                     continue
             else:
                 str_key = str(key)
-                if str_key in trig_cache_str:
-                    c, s = trig_cache_str[str_key]
+                cached_str = trig_cache_str.get(str_key)
+                if cached_str is not None:
+                    c, s = cached_str
                     try:
                         dist = float(raw)
                     except Exception:

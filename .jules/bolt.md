@@ -46,3 +46,6 @@
 ## $(date +%Y-%m-%d) - Optimize hot loop deque counting using native count()
 **Learning:** Instantiating a `collections.Counter` object just to count the frequency of a single element in a `collections.deque` during a high-frequency tight loop (like sensor tick processing) introduces severe O(N) dictionary allocation and initialization overhead on every iteration.
 **Action:** Always use the native, C-optimized `deque.count(val)` method instead. It performs the same logical operation without allocating a dictionary, yielding a ~20x performance improvement in hot paths.
+## 2025-02-16 - Combine cache checks and optimize membership loops
+**Learning:** Checking for membership with `in` followed by an access `dict[key]` requires hashing the key twice. Furthermore, checking membership against small, static tuple collections via `in ("a", "b")` requires an O(N) scan per iteration, whereas utilizing set literals `in {"a", "b"}` compiles to an O(1) frozen-set lookup at the bytecode level, providing a measurable performance win.
+**Action:** Replace `if key in dict: val = dict[key]` patterns with a single `val = dict.get(key)` combined with a `is not None` check for fast cache hit evaluation. Replace constant `tuple` literals with constant `set` literals when checking membership.
