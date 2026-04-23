@@ -137,7 +137,7 @@ class MotorModule(Module):
             self.last_action_ts = now
         except Exception as exc:  # noqa: BLE001
             logger.warning("Motor action failed: %s", exc)
-            self.disable(str(exc))
+            self.disable("Internal error")
 
     def _enqueue_turn(self, context, direction: str, steps: int = 1) -> None:
         if self.action_flow is None:

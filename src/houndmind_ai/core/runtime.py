@@ -48,7 +48,7 @@ class HoundMindRuntime:
                 logger.exception("Failed to start module: %s", module.name)
                 if module.status.required:
                     raise ModuleError(f"Required module failed: {module.name}") from exc
-                module.disable(str(exc))
+                module.disable("Internal error")
 
     def stop(self) -> None:
         for module in self.modules:
@@ -88,8 +88,8 @@ class HoundMindRuntime:
                         )
                 except Exception as exc:  # noqa: BLE001
                     # Track module errors for status reporting.
-                    module.status.last_error = str(exc)
-                    self.context.set(f"module_error:{module.name}", str(exc))
+                    module.status.last_error = "Internal error"
+                    self.context.set(f"module_error:{module.name}", "Internal error")
                     logger.exception("Module tick failed: %s", module.name)
         # Publish per-module tick durations for diagnostics
         if per_module_durations:
