@@ -42,7 +42,7 @@ class SemanticLabelerModule(Module):
         if self.backend == "opencv_dnn":
             try:
                 import cv2  # type: ignore
-            except Exception as exc:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 logger.exception("OpenCV DNN backend unavailable")
                 self.disable("Internal error")
                 return
@@ -59,7 +59,7 @@ class SemanticLabelerModule(Module):
 
             try:
                 net = cv2.dnn.readNetFromTensorflow(str(model_path), str(config_path))
-            except Exception as exc:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 logger.exception("Failed to load DNN model")
                 self.disable("Internal error")
                 return

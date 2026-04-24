@@ -17,7 +17,7 @@ class VisionModule(Module):
             return
         try:
             from vilib import Vilib  # type: ignore
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("Vision unavailable")
             self.disable("Internal error")
             return

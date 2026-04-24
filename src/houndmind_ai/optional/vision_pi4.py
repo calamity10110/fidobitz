@@ -86,7 +86,7 @@ class VisionPi4Module(Module):
 
         try:
             import cv2  # type: ignore
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("Vision backend unavailable")
             self.disable("Internal error")
             return
