@@ -86,7 +86,7 @@ class HoundMindRuntime:
                             m_elapsed,
                             budget,
                         )
-                except Exception as exc:  # noqa: BLE001
+                except Exception:  # noqa: BLE001
                     # Track module errors for status reporting.
                     module.status.last_error = "Internal error"
                     self.context.set(f"module_error:{module.name}", "Internal error")

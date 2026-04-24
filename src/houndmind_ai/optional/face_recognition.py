@@ -71,7 +71,7 @@ class FaceRecognitionModule(Module):
     def _start_opencv(self, context, settings: dict) -> None:
         try:
             import cv2  # type: ignore
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("OpenCV backend unavailable")
             self.disable("Internal error")
             return
@@ -143,7 +143,7 @@ class FaceRecognitionModule(Module):
     def _start_face_recognition(self, context, settings: dict) -> None:
         try:
             import face_recognition  # type: ignore  # noqa: F401
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("face_recognition backend unavailable")
             self.disable("Internal error")
             return
