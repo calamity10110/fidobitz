@@ -43,7 +43,8 @@ class SemanticLabelerModule(Module):
             try:
                 import cv2  # type: ignore
             except Exception as exc:  # noqa: BLE001
-                self.disable(f"OpenCV DNN backend unavailable: {exc}")
+                logger.exception("OpenCV DNN backend unavailable")
+                self.disable("Internal error")
                 return
 
             model_path = self._resolve_path(settings.get("model_path", ""))
@@ -59,7 +60,8 @@ class SemanticLabelerModule(Module):
             try:
                 net = cv2.dnn.readNetFromTensorflow(str(model_path), str(config_path))
             except Exception as exc:  # noqa: BLE001
-                self.disable(f"Failed to load DNN model: {exc}")
+                logger.exception("Failed to load DNN model")
+                self.disable("Internal error")
                 return
 
             self._cv2 = cv2
@@ -74,7 +76,8 @@ class SemanticLabelerModule(Module):
             context.set("semantic_status", {"status": "ready", "backend": self.backend})
             return
 
-        self.disable(f"Unknown semantic backend: {self.backend}")
+        logger.error("Unknown semantic backend: %s", self.backend)
+        self.disable("Internal error")
 
     def tick(self, context) -> None:
         if not self.available or not self.status.enabled:

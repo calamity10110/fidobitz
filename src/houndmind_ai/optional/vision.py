@@ -18,7 +18,8 @@ class VisionModule(Module):
         try:
             from vilib import Vilib  # type: ignore
         except Exception as exc:  # noqa: BLE001
-            self.disable(f"Vision unavailable: {exc}")
+            logger.exception("Vision unavailable")
+            self.disable("Internal error")
             return
         self.available = True
         context.set("vision", {"status": "ready"})

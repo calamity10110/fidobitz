@@ -87,7 +87,8 @@ class VisionPi4Module(Module):
         try:
             import cv2  # type: ignore
         except Exception as exc:  # noqa: BLE001
-            self.disable(f"Vision backend unavailable: {exc}")
+            logger.exception("Vision backend unavailable")
+            self.disable("Internal error")
             return
 
         device_index = int(settings.get("device_index", 0))
