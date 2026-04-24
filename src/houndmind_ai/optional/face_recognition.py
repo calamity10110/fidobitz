@@ -59,7 +59,8 @@ class FaceRecognitionModule(Module):
         elif backend == "face_recognition":
             self._start_face_recognition(context, settings)
         else:
-            self.disable(f"Unknown face recognition backend: {backend}")
+            logger.error("Unknown face recognition backend: %s", backend)
+            self.disable("Internal error")
 
     def _start_stub(self, context) -> None:
         self.available = True
@@ -71,7 +72,8 @@ class FaceRecognitionModule(Module):
         try:
             import cv2  # type: ignore
         except Exception as exc:  # noqa: BLE001
-            self.disable(f"OpenCV backend unavailable: {exc}")
+            logger.exception("OpenCV backend unavailable")
+            self.disable("Internal error")
             return
 
         self._cv2 = cv2
@@ -90,7 +92,8 @@ class FaceRecognitionModule(Module):
 
         haar_path = self._resolve_path(haar_path)
         if not haar_path.exists():
-            self.disable(f"Haar cascade not found: {haar_path}")
+            logger.error("Haar cascade not found: %s", haar_path)
+            self.disable("Internal error")
             return
 
         self._cascade = cv2.CascadeClassifier(str(haar_path))
@@ -141,7 +144,8 @@ class FaceRecognitionModule(Module):
         try:
             import face_recognition  # type: ignore  # noqa: F401
         except Exception as exc:  # noqa: BLE001
-            self.disable(f"face_recognition backend unavailable: {exc}")
+            logger.exception("face_recognition backend unavailable")
+            self.disable("Internal error")
             return
 
         self._embeddings_path = self._resolve_path(
