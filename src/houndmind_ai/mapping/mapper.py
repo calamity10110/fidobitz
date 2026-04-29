@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import operator
 import time
 from pathlib import Path
 
@@ -274,10 +275,13 @@ class MappingModule(Module):
         if not items:
             return [], [], None
 
-        # ⚡ Bolt: Replace lambda sort with native sort for C-level speed.
-        # Since items contains (int, float) tuples, native sort naturally compares the int
-        # yaw first. This bypasses Python lambda call overhead for ~4.5x faster sorting.
-        items.sort()
+        # ⚡ Bolt: Optimize sorting with native tuple comparisons
+        # When optimizing list sorting for collections of tuples where the primary
+        # sort key aligns with the first tuple element, use operator.itemgetter(0)
+        # to prevent tie-breaker instability. Native .sort() breaks tie-breaker
+        # stability by comparing subsequent tuple elements instead of maintaining
+        # original insertion order.
+        items.sort(key=operator.itemgetter(0))
         openings: list[dict] = []
         safe_paths: list[dict] = []
         # ⚡ Bolt: Localize list appends
