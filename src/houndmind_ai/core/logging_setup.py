@@ -18,7 +18,10 @@ class JsonFormatter(logging.Formatter):
         }
         # include any extra fields attached to the record
         for k, v in record.__dict__.items():
-            if k in (
+            # Replace tuple literal with set literal to compile to O(1)
+            # frozenset lookup at bytecode level, reducing O(N) scan overhead
+            # per iteration for high-throughput logging.
+            if k in {
                 "name",
                 "msg",
                 "args",
@@ -36,7 +39,7 @@ class JsonFormatter(logging.Formatter):
                 "threadName",
                 "processName",
                 "process",
-            ):
+            }:
                 continue
 
             if isinstance(v, (str, int, float, bool, type(None))):
