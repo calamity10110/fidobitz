@@ -20,7 +20,9 @@ class DummyContext:
 def test_initialization():
     logger = EventLoggerModule("test_logger")
     assert logger.name == "test_logger"
-    assert logger._events == []
+    from collections import deque
+
+    assert logger._events == deque([])
     assert logger._last_snapshot == {}
     assert logger._last_log_ts == 0.0
 

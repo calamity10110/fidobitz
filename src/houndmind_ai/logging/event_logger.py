@@ -5,6 +5,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Any
+from collections import deque
 
 from houndmind_ai.core.module import Module
 
@@ -18,7 +19,7 @@ class EventLoggerModule(Module):
 
     def __init__(self, name: str, enabled: bool = True, required: bool = False) -> None:
         super().__init__(name, enabled=enabled, required=required)
-        self._events: list[dict[str, Any]] = []
+        self._events: deque[dict[str, Any]] = deque()
         self._last_snapshot: dict[str, Any] = {}
         self._last_log_ts = 0.0
 
@@ -78,9 +79,9 @@ class EventLoggerModule(Module):
 
     def _append_event(self, event: dict[str, Any], settings: dict[str, Any]) -> None:
         max_entries = int(settings.get("event_log_max_entries", 1000))
+        if getattr(self._events, "maxlen", None) != max_entries:
+            self._events = deque(self._events, maxlen=max_entries)
         self._events.append(event)
-        if len(self._events) > max_entries:
-            self._events = self._events[-max_entries:]
         if settings.get("event_log_file_enabled", True):
             self._write_jsonl(event, settings)
 
