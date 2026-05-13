@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import logging
 import threading
 import time
+from collections import deque
 from typing import Callable, Any
 
 from houndmind_ai.core.module import Module
@@ -55,7 +56,7 @@ class ScanningService:
         self._stop = threading.Event()
         self._callbacks: list[Callable[[ScanReading], None]] = []
         self._latest: ScanReading | None = None
-        self._history: list[ScanReading] = []
+        self._history: deque[ScanReading] = deque(maxlen=10)
         self._interval_override: float | None = None
 
         # ⚡ Bolt: Cache method lookup to avoid hasattr in hot loop
@@ -167,12 +168,12 @@ class ScanningService:
                     angles = self.build_angles()
                     reading = self.sweep_scan(angles)
                 self._latest = reading
-                self._history.append(reading)
                 max_len = max(
                     1, _safe_int(self._settings.get("scan_history_size", 10), 10)
                 )
-                if len(self._history) > max_len:
-                    self._history = self._history[-max_len:]
+                if self._history.maxlen != max_len:
+                    self._history = deque(self._history, maxlen=max_len)
+                self._history.append(reading)
                 for cb in list(self._callbacks):
                     cb(reading)
             except Exception as exc:  # noqa: BLE001

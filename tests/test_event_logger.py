@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch, mock_open
 
 import pytest
+from collections import deque
 
 from houndmind_ai.logging.event_logger import EventLoggerModule, SCHEMA_VERSION
 
@@ -20,7 +21,7 @@ class DummyContext:
 def test_initialization():
     logger = EventLoggerModule("test_logger")
     assert logger.name == "test_logger"
-    assert logger._events == []
+    assert list(logger._events) == []
     assert logger._last_snapshot == {}
     assert logger._last_log_ts == 0.0
 
@@ -289,7 +290,7 @@ def test_stop():
     logger = EventLoggerModule("test_logger")
     ctx = DummyContext()
     ctx.set("settings", {"logging": {"event_log_file_enabled": True}})
-    logger._events = [{"stuck_recovery": True}]
+    logger._events = deque([{"stuck_recovery": True}], maxlen=1000)
 
     with patch.object(logger, "_write_jsonl") as m_write:
         logger.stop(ctx)
@@ -305,7 +306,7 @@ def test_stop_no_file():
     logger = EventLoggerModule("test_logger")
     ctx = DummyContext()
     ctx.set("settings", {"logging": {"event_log_file_enabled": False}})
-    logger._events = [{"stuck_recovery": True}]
+    logger._events = deque([{"stuck_recovery": True}], maxlen=1000)
 
     with patch.object(logger, "_write_jsonl") as m_write:
         logger.stop(ctx)
