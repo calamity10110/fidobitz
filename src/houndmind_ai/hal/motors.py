@@ -35,6 +35,9 @@ class MotorModule(Module):
         self.last_action: str | None = None
         self.action_flow: Optional[Any] = None
         self.last_action_ts = 0.0
+        self._has_wait_all_done = False
+        self._has_head_move = False
+        self._has_wait_head_done = False
 
     def start(self, context) -> None:
         if not self.status.enabled:
@@ -52,6 +55,9 @@ class MotorModule(Module):
         # Motors should own the hardware lifecycle for clean shutdown.
         context.set("pidog_owner", self.name)
         self.dog = dog
+        self._has_wait_all_done = hasattr(dog, "wait_all_done")
+        self._has_head_move = hasattr(dog, "head_move")
+        self._has_wait_head_done = hasattr(dog, "wait_head_done")
         self.action_flow = ActionFlow(dog)
         self.action_flow.start()
 
@@ -205,7 +211,7 @@ class MotorModule(Module):
                 dog.do_action(
                     step_dir.replace("turn ", "turn_"), step_count=1, speed=speed
                 )
-                if hasattr(dog, "wait_all_done"):
+                if self._has_wait_all_done:
                     dog.wait_all_done()
             except Exception:  # noqa: BLE001
                 self._apply_head_center(context)
@@ -306,7 +312,7 @@ class MotorModule(Module):
         return blocked
 
     def _apply_head_follow(self, direction: str, context) -> None:
-        if self.dog is None or not hasattr(self.dog, "head_move"):
+        if self.dog is None or not self._has_head_move:
             return
         enabled, degrees, speed, _, _, _, _, _ = self._head_follow_config(context)
         if not enabled or degrees <= 0:
@@ -316,13 +322,13 @@ class MotorModule(Module):
         yaw = degrees if direction == "left" else -degrees
         try:
             self.dog.head_move([[yaw, 0, 0]], speed=speed)
-            if hasattr(self.dog, "wait_head_done"):
+            if self._has_wait_head_done:
                 self.dog.wait_head_done()
         except Exception:  # noqa: BLE001
             return
 
     def _apply_head_center(self, context) -> None:
-        if self.dog is None or not hasattr(self.dog, "head_move"):
+        if self.dog is None or not self._has_head_move:
             return
         enabled, _, speed, _, _, _, _, _ = self._head_follow_config(context)
         if not enabled:
@@ -331,7 +337,7 @@ class MotorModule(Module):
             return
         try:
             self.dog.head_move([[0, 0, 0]], speed=speed)
-            if hasattr(self.dog, "wait_head_done"):
+            if self._has_wait_head_done:
                 self.dog.wait_head_done()
         except Exception:  # noqa: BLE001
             return
