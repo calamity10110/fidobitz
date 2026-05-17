@@ -97,7 +97,7 @@ def collect(bundle_path: Path) -> None:
             for f in sorted(logs.iterdir()):
                 if not f.is_file():
                     continue
-                if f.suffix in (".gz", ".zip"):
+                if f.suffix in {".gz", ".zip"}:
                     # include compressed rotated files as-is
                     z.write(f, arcname=str(Path("logs") / f.name))
                     continue
