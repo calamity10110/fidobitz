@@ -91,6 +91,11 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         if not req_trace:
             self._send_json({"error": "trace_id required"}, status=400)
             return
+        import re
+
+        if not re.fullmatch(r"^[a-zA-Z0-9_ -]+$", str(req_trace)):
+            self._send_json({"error": "invalid trace_id format"}, status=400)
+            return
         zip_path = self.module.create_support_bundle_for_trace(req_trace)
         if not zip_path:
             self._send_json({"error": "failed to create bundle"}, status=500)
@@ -244,7 +249,7 @@ class TelemetryDashboardModule(Module):
 
             import re
 
-            if not re.match(r"^[a-zA-Z0-9_ -]+$", str(trace_id)):
+            if not re.fullmatch(r"^[a-zA-Z0-9_ -]+$", str(trace_id)):
                 logger.warning("Invalid trace_id format rejected: %s", trace_id)
                 return None
 
