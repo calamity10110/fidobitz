@@ -38,3 +38,7 @@
 **Vulnerability:** The codebase occasionally logged or caught exceptions and directly serialized `str(exc)` into HTTP JSON responses (`{"error": str(exc)}`), bypassing standard safe fallback practices. This was found in telemetry download APIs, WiFi localization sub-calls, runtime core, and hal motors.
 **Learning:** Returning `str(exc)` back to users via API endpoints or internal state fields can easily leak internal system states, OS-level filesystem paths, or Python stack variables.
 **Prevention:** Catch all exceptions securely, print them server-side using `logger.exception(...)`, and return or save a constant, generic safe response like `"Internal error"`.
+## 2024-05-31 - re.match Vulnerability to Trailing Newlines
+**Vulnerability:** HTTP endpoints reading `trace_id` and `name` inputs validated them using `re.match(r"^[a-zA-Z0-9_ -]+$", value)`. The `re.match` function combined with a `$` anchor allows a single trailing newline character to bypass the validation (e.g., `'valid\n'`), potentially allowing newline injection into shell commands or log entries.
+**Learning:** In Python, `re.match` checks for a match only at the beginning of the string, and the `$` anchor matches the end of the string OR just before the newline at the end of the string.
+**Prevention:** Always use `re.fullmatch()` when strictly validating security-sensitive inputs against a regex to guarantee the entire string, including any trailing whitespace, conforms to the pattern.
