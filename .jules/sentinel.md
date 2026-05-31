@@ -38,3 +38,7 @@
 **Vulnerability:** The codebase occasionally logged or caught exceptions and directly serialized `str(exc)` into HTTP JSON responses (`{"error": str(exc)}`), bypassing standard safe fallback practices. This was found in telemetry download APIs, WiFi localization sub-calls, runtime core, and hal motors.
 **Learning:** Returning `str(exc)` back to users via API endpoints or internal state fields can easily leak internal system states, OS-level filesystem paths, or Python stack variables.
 **Prevention:** Catch all exceptions securely, print them server-side using `logger.exception(...)`, and return or save a constant, generic safe response like `"Internal error"`.
+## 2025-03-01 - Path Traversal via re.match Allowlist Bypass
+**Vulnerability:** The HTTP handlers for `FaceRecognitionModule` (face enrollment) and `TelemetryDashboardModule` (support bundle download) used `re.match(r"^[a-zA-Z0-9_ -]+$", name)` to validate HTTP input intended for file system paths. `re.match` with a `$` anchor allows a single trailing newline character (e.g. `"malicious_name\n"`) to pass validation.
+**Learning:** `re.match` is insufficient for strict security input validation in Python because it does not strictly enforce that the entire string is matched without trailing newlines. This can lead to subtle injection or formatting vulnerabilities later in the pipeline.
+**Prevention:** Always use `re.fullmatch()` instead of `re.match()` for strict validation against allowlist regular expressions, as it guarantees the entire string is evaluated without hidden trailing newlines.
