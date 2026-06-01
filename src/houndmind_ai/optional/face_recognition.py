@@ -284,7 +284,7 @@ class FaceRecognitionModule(Module):
                     if not name:
                         self._send_json({"error": "Missing name"}, status=400)
                         return
-                    if not re.match(r"^[a-zA-Z0-9_ -]+$", name):
+                    if not re.fullmatch(r"^[a-zA-Z0-9_ -]+$", name):
                         self._send_json({"error": "Invalid name format"}, status=400)
                         return
                     module._pending_commands.append({"action": "enroll", "name": name})
@@ -315,7 +315,7 @@ class FaceRecognitionModule(Module):
                     if not name:
                         self._send_json({"error": "Missing name"}, status=400)
                         return
-                    if not re.match(r"^[a-zA-Z0-9_ -]+$", name):
+                    if not re.fullmatch(r"^[a-zA-Z0-9_ -]+$", name):
                         self._send_json({"error": "Invalid name format"}, status=400)
                         return
                     module._pending_commands.append({"action": "enroll", "name": name})
