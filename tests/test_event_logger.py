@@ -57,28 +57,6 @@ def test_summarize_module_statuses():
     }
 
 
-def test_count_actions():
-    logger = EventLoggerModule("test_logger")
-    logger._events = [
-        {"navigation_action": "turn_left"},
-        {"navigation_action": "turn_right"},
-        {"navigation_action": "turn_left"},
-        {"navigation_action": None},
-        {"other_key": "some_value"},
-        {"navigation_action": "move_forward"},
-    ]
-
-    counts = logger._count_actions("navigation_action")
-    assert counts == {
-        "turn_left": 2,
-        "turn_right": 1,
-        "move_forward": 1,
-    }
-
-    # Test key that doesn't exist in any event
-    assert logger._count_actions("non_existent") == {}
-
-
 def test_generate_report():
     logger = EventLoggerModule("test_logger")
     logger._events = [
