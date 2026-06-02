@@ -38,3 +38,8 @@
 **Vulnerability:** The codebase occasionally logged or caught exceptions and directly serialized `str(exc)` into HTTP JSON responses (`{"error": str(exc)}`), bypassing standard safe fallback practices. This was found in telemetry download APIs, WiFi localization sub-calls, runtime core, and hal motors.
 **Learning:** Returning `str(exc)` back to users via API endpoints or internal state fields can easily leak internal system states, OS-level filesystem paths, or Python stack variables.
 **Prevention:** Catch all exceptions securely, print them server-side using `logger.exception(...)`, and return or save a constant, generic safe response like `"Internal error"`.
+## 2026-06-02 - Prevent CRLF and Directory Traversal via Strict Regex Matches
+**Vulnerability:** The HTTP handlers used `re.match(r'^[a-zA-Z0-9_ -]+$', input)` which unexpectedly allowed trailing newlines (e.g. `'valid
+'`) because `re.match` combined with `$` matches just before a newline. This could bypass sanitization checks for trace IDs and face enrollment names, leading to path traversal or newline injection in shell/file paths.
+**Learning:** In Python, `re.match` only anchors to the beginning by default, and `$` permits a trailing newline. When strictly validating input intended for file paths or logging, this can leave a loophole.
+**Prevention:** Always use `re.fullmatch()` to ensure the entire string, without any trailing newlines, perfectly matches the required strict pattern.
