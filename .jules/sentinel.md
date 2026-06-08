@@ -38,3 +38,7 @@
 **Vulnerability:** The codebase occasionally logged or caught exceptions and directly serialized `str(exc)` into HTTP JSON responses (`{"error": str(exc)}`), bypassing standard safe fallback practices. This was found in telemetry download APIs, WiFi localization sub-calls, runtime core, and hal motors.
 **Learning:** Returning `str(exc)` back to users via API endpoints or internal state fields can easily leak internal system states, OS-level filesystem paths, or Python stack variables.
 **Prevention:** Catch all exceptions securely, print them server-side using `logger.exception(...)`, and return or save a constant, generic safe response like `"Internal error"`.
+## 2024-06-08 - Use re.fullmatch for Validation checks
+**Vulnerability:** Found `re.match` used with `$` anchor in `telemetry_dashboard.py` and `face_recognition.py` for name and trace_id validation which allowed trailing new lines to bypass validation (e.g. "valid_name\n").
+**Learning:** Python `re.match` with a trailing `$` anchor will successfully match inputs that end with a newline character `\n`. It only verifies that the string matches from the start.
+**Prevention:** Use `re.fullmatch` for strict string validation when using regex, as it correctly strictly checks the entire string from beginning to end without ignoring trailing newlines.
