@@ -109,7 +109,7 @@ class MotorModule(Module):
                     self.last_action_ts = now
                     return
 
-            if action in ("turn left", "turn right"):
+            if action in {"turn left", "turn right"}:
                 direction = "left" if action == "turn left" else "right"
                 self._schedule_head_follow(context, direction)
 
