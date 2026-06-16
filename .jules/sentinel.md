@@ -38,3 +38,8 @@
 **Vulnerability:** The codebase occasionally logged or caught exceptions and directly serialized `str(exc)` into HTTP JSON responses (`{"error": str(exc)}`), bypassing standard safe fallback practices. This was found in telemetry download APIs, WiFi localization sub-calls, runtime core, and hal motors.
 **Learning:** Returning `str(exc)` back to users via API endpoints or internal state fields can easily leak internal system states, OS-level filesystem paths, or Python stack variables.
 **Prevention:** Catch all exceptions securely, print them server-side using `logger.exception(...)`, and return or save a constant, generic safe response like `"Internal error"`.
+
+## 2025-03-01 - Avoid re.match with trailing anchors for security input validation
+**Vulnerability:** `re.match(r"^[a-zA-Z0-9_ -]+$", name)` used in `telemetry_dashboard.py` and `face_recognition.py` for strictly sanitizing input (to prevent path traversal and command injection) would incorrectly permit trailing newlines (e.g. `'valid\n'`). This could potentially lead to issues when the input is used directly to interact with filesystem APIs or subprocesses.
+**Learning:** `re.match` anchors `^` and `$` do not prevent a single trailing newline in the string, which is sufficient to escape bounds or cause path errors downstream.
+**Prevention:** Always use `re.fullmatch()` rather than `re.match()` with `^` and `$` anchors for exact security string validation.
