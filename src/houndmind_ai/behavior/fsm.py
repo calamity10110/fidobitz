@@ -524,7 +524,7 @@ class BehaviorModule(Module):
                     w *= curiosity
                 elif m == "interact":
                     w *= sociability
-                elif m in ("patrol", "play"):
+                elif m in {"patrol", "play"}:
                     w *= activity
             weights[m] = w
 
