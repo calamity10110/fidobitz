@@ -101,12 +101,13 @@ class EventLoggerModule(Module):
     def _generate_report(self) -> dict[str, Any]:
         total = len(self._events)
 
-        # ⚡ Bolt: Optimize 4 O(N) loops into a single pass to improve performance
+        # ⚡ Bolt: Optimize O(N) loops into a single pass to improve performance
         # when generating reports over the event buffer (up to 1000 items).
         stuck_events = 0
         safety_events = 0
         watchdog_events = 0
         mapping_hint_events = 0
+        nav_action_counts: dict[str, int] = {}
 
         for e in self._events:
             if e.get("stuck_recovery"):
@@ -118,8 +119,11 @@ class EventLoggerModule(Module):
             if e.get("mapping_hint"):
                 mapping_hint_events += 1
 
-        # Aggregate navigation actions for quick tuning insight.
-        nav_action_counts = self._count_actions("navigation_action")
+            nav_val = e.get("navigation_action")
+            if nav_val:
+                nav_name = str(nav_val)
+                nav_action_counts[nav_name] = nav_action_counts.get(nav_name, 0) + 1
+
         return {
             "schema_version": SCHEMA_VERSION,
             "timestamp": time.time(),
@@ -130,17 +134,6 @@ class EventLoggerModule(Module):
             "mapping_hint_events": mapping_hint_events,
             "navigation_action_counts": nav_action_counts,
         }
-
-    def _count_actions(self, key: str) -> dict[str, int]:
-        # Count distinct action strings found under the provided key.
-        counts: dict[str, int] = {}
-        for event in self._events:
-            value = event.get(key)
-            if not value:
-                continue
-            name = str(value)
-            counts[name] = counts.get(name, 0) + 1
-        return counts
 
     @staticmethod
     def _summarize_module_statuses(statuses: Any) -> dict[str, Any] | None:
