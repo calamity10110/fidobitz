@@ -248,6 +248,7 @@ class VoiceModule(Module):
                 self.send_header("Content-Length", str(len(data)))
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Content-Security-Policy", "default-src 'none'")
                 self.end_headers()
                 self.wfile.write(data)
 

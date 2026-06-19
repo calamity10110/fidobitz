@@ -38,3 +38,7 @@
 **Vulnerability:** The codebase occasionally logged or caught exceptions and directly serialized `str(exc)` into HTTP JSON responses (`{"error": str(exc)}`), bypassing standard safe fallback practices. This was found in telemetry download APIs, WiFi localization sub-calls, runtime core, and hal motors.
 **Learning:** Returning `str(exc)` back to users via API endpoints or internal state fields can easily leak internal system states, OS-level filesystem paths, or Python stack variables.
 **Prevention:** Catch all exceptions securely, print them server-side using `logger.exception(...)`, and return or save a constant, generic safe response like `"Internal error"`.
+## 2024-05-24 - Missing CSP Headers Across BaseHTTPRequestHandler Handlers
+**Vulnerability:** Found multiple missing Content-Security-Policy (CSP) headers across custom HTTP handlers implemented directly on top of `BaseHTTPRequestHandler` (in `telemetry_dashboard.py`, `face_recognition.py`, `voice.py`, and `vision_pi4.py`).
+**Learning:** Raw use of `BaseHTTPRequestHandler` meant that each custom endpoint or download action had to manually reconstruct its security headers, causing security headers to be missed or implemented inconsistently compared to typical web frameworks that use centralized middleware.
+**Prevention:** Always verify all security headers (such as CSP, X-Frame-Options, X-Content-Type-Options) are explicitly manually attached for each individual response when relying on the lower-level `BaseHTTPRequestHandler`. Consider wrapping these with a utility function.

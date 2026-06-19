@@ -220,6 +220,7 @@ class VisionPi4Module(Module):
                     self.send_response(404)
                     self.send_header("X-Content-Type-Options", "nosniff")
                     self.send_header("X-Frame-Options", "DENY")
+                    self.send_header("Content-Security-Policy", "default-src 'none'")
                     self.end_headers()
                     return
 
@@ -228,6 +229,7 @@ class VisionPi4Module(Module):
                     self.send_header("Content-Type", "application/json")
                     self.send_header("X-Content-Type-Options", "nosniff")
                     self.send_header("X-Frame-Options", "DENY")
+                    self.send_header("Content-Security-Policy", "default-src 'none'")
                     self.end_headers()
                     self.wfile.write(b'{"error": "unauthorized"}')
                     return
@@ -238,6 +240,7 @@ class VisionPi4Module(Module):
                 )
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Content-Security-Policy", "default-src 'none'")
                 self.end_headers()
 
                 try:

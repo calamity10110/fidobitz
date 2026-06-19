@@ -31,6 +31,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'none'")
         self.end_headers()
         self.wfile.write(data)
 
@@ -80,6 +81,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'none'")
         self.end_headers()
         self.wfile.write(payload)
 
@@ -107,6 +109,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(data)))
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("X-Frame-Options", "DENY")
+            self.send_header("Content-Security-Policy", "default-src 'none'")
             self.end_headers()
             self.wfile.write(data)
         except Exception:  # noqa: BLE001
@@ -129,6 +132,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'none'")
         self.end_headers()
         self.wfile.write(payload)
 
