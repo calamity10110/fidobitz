@@ -235,7 +235,7 @@ class FaceRecognitionModule(Module):
                 host = "127.0.0.1"
             else:
                 logger.warning(
-                    "Face recognition HTTP server configured to bind to 0.0.0.0 â ensure network access is restricted or use the generated/configured auth_token"
+                    "Face recognition HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
                 )
 
         module = self
@@ -248,7 +248,6 @@ class FaceRecognitionModule(Module):
                 self.send_header("Content-Length", str(len(data)))
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("X-Frame-Options", "DENY")
-                self.send_header("Content-Security-Policy", "default-src 'none'")
                 self.end_headers()
                 self.wfile.write(data)
 
@@ -286,8 +285,25 @@ class FaceRecognitionModule(Module):
                         self._send_json({"error": "Missing name"}, status=400)
                         return
                     if not re.fullmatch(r"^[a-zA-Z0-9_ -]+$", name):
-                        self._send_json({"erræÖRf÷&ÖB'ÒÂ7FGW3ÓC¢&WGW&à¢ÖöGVÆRå÷VæFæuö6öÖÖæG2æVæB²&7me": name})
-                    self._send_json({"stb&WGW&à¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$æ÷Bf÷VæB'ÒÂ7FGW3ÓCB ¢FVbFõõõ5B6VÆb ¢'6VBÒW&Ç'6R6VÆbçF¢&×2Ò'6U÷2'6VBçVW' ¢2ÆÂõ5BVæGöçG2&WV&RWFVçF6Föà¢bæ÷B6VÆbåöWFöö²&×2 ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢'VæWF÷&¦VB'ÒÂ7FGW3ÓC¢&WGW&à ¢ÆVæwFÒçB6VÆbæVFW'2ævWB$6öçFVçBÔÆVæwF"Â#"¢bÆVæwFâCSsc¢2Ô"ÆÖBFò&WfVçBFõ2vFÆ&vRÖvW0¢6VÆbå÷6VæEö§6öâ²&W'oad too large"}, status=413)
+                        self._send_json({"error": "Invalid name format"}, status=400)
+                        return
+                    module._pending_commands.append({"action": "enroll", "name": name})
+                    self._send_json({"status": "queued", "name": name})
+                    return
+                self._send_json({"error": "Not found"}, status=404)
+
+            def do_POST(self):
+                parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+
+                # All POST endpoints require authentication
+                if not self._auth_ok(params):
+                    self._send_json({"error": "unauthorized"}, status=401)
+                    return
+
+                length = int(self.headers.get("Content-Length", "0"))
+                if length > 10485760:  # 10MB limit to prevent DoS with large images
+                    self._send_json({"error": "Payload too large"}, status=413)
                     return
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
                 if parsed.path == "/enroll":
@@ -305,7 +321,64 @@ class FaceRecognitionModule(Module):
                     module._pending_commands.append({"action": "enroll", "name": name})
                     self._send_json({"status": "queued", "name": name})
                     return
-                self._send_json({"errFVbÆöuöÖW76vR6VÆbÂf÷&ÖBÂ¦&w2 ¢&WGW&à ¢G' ¢6W'fW"ÒF&VFætEE6W'fW"÷7BÂ÷'BÂæFÆW"¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær$fÆVBFò7F'Bf6R&V6övæFöâEE6W'fW#¢W2"ÂW2¢&WGW&à¢6VÆbåöGG÷6W'fW"Ò6W'fW ¢6VÆbåöGG÷F&VBÒF&VFæråF&VBF&vWC×6W'fW"ç6W'fUöf÷&WfW"ÂFVÖöãÕG'VR¢6VÆbåöGG÷F&VBç7F'B¢ÆövvW"ææfò$f6R&V6övæFöâEE6W'fW"Æ7FVææröâW3¢W2"Â÷7BÂ÷'B ¢FVböÇöÆ'÷&V6övæFöâ¢6VÆbÂVçG'¢F7E·7G"ÂçÒÂf6U÷&ö¢çÂF&W6öÆC¢fÆö@¢ÓâæöæS ¢""$ÆW2Ä%f6R&V6övæFöâFòFWFV7FVBf6R$ôâ"" ¢b6VÆbå÷&V6övæ¦W"2æöæS ¢&WGW&à ¢G' ¢Æ&VÅöBÂ6öæfFVæ6RÒ6VÆbå÷&V6övæ¦W"ç&VF7Bf6U÷&ö¢æÖRÒ6VÆbåöÆ&VÅöÖævWBçBÆ&VÅöBÂ'Væ¶æ÷vâ"¢VçG'çWFFR²&Æ&VÂ#¢æÖRÂ&6öæfFVæ6R#¢fÆöB6öæfFVæ6RÒ¢b6öæfFVæ6RâF&W6öÆC ¢VçG'²&Æ&VÂ%ÒÒ'Væ¶æ÷vâ ¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær¢$Ä%&VF7FöâfÆVBf÷"$ôvF6RW3¢W2"À¢vWFGG"f6U÷&öÂ'6R"Â'Væ¶æ÷vâ"À¢W2À¢W5öæfóÕG'VRÀ¢ ¢FVböFWFV7Eö÷Væ7b6VÆbÂg&ÖRÂ6WGFæw3¢F7BÓâÆ7E¶F7E·7G"ÂçÕÓ ¢b6VÆbåö7c"2æöæR÷"6VÆbåö666FR2æöæS ¢&WGW&âµÐ¢7c"Ò6VÆbåö7c ¢w&Ò7c"æ7gD6öÆ÷"g&ÖRÂ7c"ä4ôÄõ%ô$u#$u$ ¢66ÆUöf7F÷"ÒfÆöB6WGFæw2ævWB'66ÆUöf7F÷""Âã¢ÖåöæVv&÷'2ÒçB6WGFæw2ævWB&ÖåöæVv&÷'2"ÂR¢Öåöf6U÷ÒçB6WGFæw2ævWB&Öåöf6U÷"Âc ¢f6W2Ò6VÆbåö666FRæFWFV7D×VÇF66ÆR¢w&À¢66ÆTf7F÷#×66ÆUöf7F÷"À¢ÖäæVv&÷'3ÖÖåöæVv&÷'2À¢Öå6¦SÒÖåöf6U÷ÂÖåöf6U÷À¢ ¢&W7VÇG3¢Æ7E¶F7E·7G"ÂçÕÒÒµÐ¢Æ'÷6WGFæw2Ò6WGFæw2ævWB&Æ'"Â·Ò¢F&W6öÆBÒfÆöBÆ'÷6WGFæw2ævWB&6öæfFVæ6U÷F&W6öÆB"Âsã¢f÷"ÂÂrÂâf6W3 ¢VçG'¢F7E·7G"ÂçÒÒ²&&&)]}
+                self._send_json({"error": "Not found"}, status=404)
+
+            def log_message(self, format, *args):
+                return
+
+        try:
+            server = ThreadingHTTPServer((host, port), Handler)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to start face recognition HTTP server: %s", exc)
+            return
+        self._http_server = server
+        self._http_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        self._http_thread.start()
+        logger.info("Face recognition HTTP server listening on %s:%s", host, port)
+
+    def _apply_lbph_recognition(
+        self, entry: dict[str, Any], face_roi: Any, threshold: float
+    ) -> None:
+        """Applies LBPH face recognition to a detected face ROI."""
+        if self._recognizer is None:
+            return
+
+        try:
+            label_id, confidence = self._recognizer.predict(face_roi)
+            name = self._label_map.get(int(label_id), "unknown")
+            entry.update({"label": name, "confidence": float(confidence)})
+            if confidence > threshold:
+                entry["label"] = "unknown"
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "LBPH prediction failed for ROI with shape %s: %s",
+                getattr(face_roi, "shape", "unknown"),
+                exc,
+                exc_info=True,
+            )
+
+    def _detect_opencv(self, frame, settings: dict) -> list[dict[str, Any]]:
+        if self._cv2 is None or self._cascade is None:
+            return []
+        cv2 = self._cv2
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        scale_factor = float(settings.get("scale_factor", 1.1))
+        min_neighbors = int(settings.get("min_neighbors", 5))
+        min_face_px = int(settings.get("min_face_px", 60))
+
+        faces = self._cascade.detectMultiScale(
+            gray,
+            scaleFactor=scale_factor,
+            minNeighbors=min_neighbors,
+            minSize=(min_face_px, min_face_px),
+        )
+
+        results: list[dict[str, Any]] = []
+        lbph_settings = settings.get("lbph", {})
+        threshold = float(lbph_settings.get("confidence_threshold", 70.0))
+        for x, y, w, h in faces:
+            entry: dict[str, Any] = {"bbox": [int(x), int(y), int(w), int(h)]}
             face_roi = gray[y : y + h, x : x + w]
             self._apply_lbph_recognition(entry, face_roi, threshold)
             results.append(entry)
@@ -459,4 +532,31 @@ class FaceRecognitionModule(Module):
         if self._embeddings_path is None:
             return
         self._embeddings_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"nafÆbåö¶æ÷våöæÖW2Â&VÖ&VFFæw2#¢6VÆbåö¶æ÷våöVÖ&VFFæw7Ð¢6VÆbåöVÖ&VFFæw5÷Fçw&FU÷FWB¢§6öâæGV×2ÆöBÂæFVçCÓ"ÂVæ6öFæsÒ'WFbÓ ¢ ¢FVböÆöEöÆ&VÅöÖ6VÆbÂÆ&VÅöÖ÷F¢FÓâF7E¶çBÂ7G%Ó ¢bæ÷BÆ&VÅöÖ÷FæW7G2 ¢&WGW&â·Ð¢G' ¢ÆöBÒ§6öâæÆöG2Æ&VÅöÖ÷Fç&VE÷FWBVæ6öFæsÒ'WFbÓ"¢&WGW&â¶çB²¢bf÷"²ÂbâÆöBæFV×2Ð¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær$fÆVBFòÆöBÆ&VÂÖ¢W2"ÂW2¢&WGW&â·Ð ¢FVb÷&W6öÇfU÷F6VÆbÂfÇVS¢7G"ÓâF ¢FÒFfÇVR¢bæ÷BFæ5ö'6öÇWFR ¢FÒ6VÆbç&Wõ÷&ö÷BòF¢&WGW&âF ¢FVb7F÷6VÆbÂ6öçFWBÓâæöæS ¢b6VÆbåöGG÷6W'fW"2æ÷BæöæS ¢G' ¢6VÆbåöGG÷6W'fW"ç6WFF÷vâ¢6VÆbåöGG÷6W'fW"ç6W'fW%ö6Æ÷6R¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær$fÆVBFò7F÷f6R&V6övæFöâEE6W'fW#¢W2"ÂW2
+        payload = {"names": self._known_names, "embeddings": self._known_embeddings}
+        self._embeddings_path.write_text(
+            json.dumps(payload, indent=2), encoding="utf-8"
+        )
+
+    def _load_label_map(self, label_map_path: Path) -> dict[int, str]:
+        if not label_map_path.exists():
+            return {}
+        try:
+            payload = json.loads(label_map_path.read_text(encoding="utf-8"))
+            return {int(k): v for k, v in payload.items()}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to load label map: %s", exc)
+            return {}
+
+    def _resolve_path(self, value: str) -> Path:
+        path = Path(value)
+        if not path.is_absolute():
+            path = self.repo_root / path
+        return path
+
+    def stop(self, context) -> None:
+        if self._http_server is not None:
+            try:
+                self._http_server.shutdown()
+                self._http_server.server_close()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to stop face recognition HTTP server: %s", exc)
