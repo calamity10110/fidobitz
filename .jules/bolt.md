@@ -52,3 +52,6 @@
 ## $(date +%Y-%m-%d) - Optimize sorting with native tuple comparisons
 **Learning:** Python's native `.sort()` method compares tuples element by element. When sorting a list of tuples like `(int, float)` based on the first integer element, using `items.sort(key=lambda x: x[0])` introduces significant overhead because the Python interpreter must call the lambda function for every comparison. Native `.sort()` performs the same primary sorting at C-level, bypassing the lambda overhead entirely and resulting in ~4.5x faster execution.
 **Action:** When optimizing list sorting for collections of tuples where the primary sort key aligns with the first tuple element, replace `items.sort(key=lambda x: x[0])` with native `items.sort()` after verifying data types. Note that this breaks tie-breaker stability, as ties on the first element will fall back to comparing subsequent tuple elements instead of maintaining original insertion order.
+## 2025-02-16 - Inline aggregations to single loop
+**Learning:** Aggregating metrics using separate helper functions over the same collection causes redundant O(N) traversals. Combining them into a single pass loop improves performance.
+**Action:** When calculating multiple aggregations or metrics over a list, inline the operations into a single loop to eliminate redundant O(N) traversals.
