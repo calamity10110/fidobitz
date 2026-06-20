@@ -36,7 +36,7 @@ class HabituationModule(Module):
             detected = False
             try:
                 val = perception.get(stimulus)
-                detected = val not in (None, False, "N")
+                detected = val not in {None, False, "N"}
             except Exception:
                 detected = False
 

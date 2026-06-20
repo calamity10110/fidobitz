@@ -144,8 +144,8 @@ class VoiceModule(Module):
     def _resolve_action(self, text: str, mapping: dict, aliases: dict) -> str | None:
         if text in mapping:
             return str(mapping[text])
-        if text in aliases:
-            alias = aliases[text]
+        alias = aliases.get(text)
+        if alias is not None:
             if isinstance(alias, str) and alias in mapping:
                 return str(mapping[alias])
             if isinstance(alias, str):
@@ -304,7 +304,7 @@ class VoiceModule(Module):
                     self._send_json({"error": "Payload too large"}, status=413)
                     return
                 body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
-                if parsed.path in ("/say", "/command"):
+                if parsed.path in {"/say", "/command"}:
                     try:
                         payload = json.loads(body) if body else {}
                     except Exception:
@@ -350,7 +350,7 @@ class VoiceModule(Module):
         backend = stt_cfg.get("backend", "speech_recognition")
 
         # Prefer SpeechRecognition (network or local via installed engines)
-        if backend in ("auto", "speech_recognition", "speech-recognition"):
+        if backend in {"auto", "speech_recognition", "speech-recognition"}:
             try:
                 import speech_recognition as sr  # type: ignore
 
@@ -380,7 +380,7 @@ class VoiceModule(Module):
                 logger.debug("SpeechRecognition not available or failed to initialize")
 
         # Fallback to VOSK if configured or available
-        if backend in ("auto", "vosk"):
+        if backend in {"auto", "vosk"}:
             try:
                 from vosk import Model, KaldiRecognizer  # type: ignore
                 import pyaudio  # type: ignore
