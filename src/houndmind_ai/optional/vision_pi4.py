@@ -55,30 +55,7 @@ class VisionPi4Module(Module):
             # Dummy inference function, replace with actual model
             def _dummy_inference(frame):
                 time.sleep(0.05)
-                return {"frame_id": id(frame), "result": "ok"}
-
-            self._inference_scheduler = VisionInferenceScheduler(
-                _dummy_inference, result_callback=_on_inference_result
-            )
-            assert self._inference_scheduler is not None
-            self._inference_scheduler.start()
-
-        if backend == "picamera2":
-            try:
-                from picamera2 import Picamera2  # type: ignore
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Picamera2 unavailable: %s", exc)
-            else:
-                try:
-                    cam = Picamera2()
-                    config = cam.create_preview_configuration()
-                    cam.configure(config)
-                    cam.start()
-                    self._camera = cam
-                    self.available = True
-                    context.set(
-                        "vision_status", {"status": "ready", "backend": backend}
-                    )
+                return {"frb6VÆbåöæfW&Væ6U÷66VGVÆW"Òf6öäæfW&Væ6U66VGVÆW"¢öGVÖ×öæfW&Væ6RÂ&W7VÇEö6ÆÆ&6³ÕööåöæfW&Væ6U÷&W7VÇ@¢¢76W'B6VÆbåöæfW&Væ6U÷66VGVÆW"2æ÷BæöæP¢6VÆbåöæfW&Væ6U÷66VGVÆW"ç7F'B ¢b&6¶VæBÓÒ'6ÖW&"# ¢G' ¢g&öÒ6ÖW&"×÷'B6ÖW&"2GS¢væ÷&P¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær%6ÖW&"VæfÆ&ÆS¢W2"ÂW2¢VÇ6S ¢G' ¢6ÒÒ6ÖW&"¢6öæfrÒ6Òæ7&VFU÷&WfWuö6öæfwW&Föâ¢6Òæ6öæfwW&R6öæfr¢6Òç7F'B¢6VÆbåö6ÖW&Ò6Ð¢6VÆbæfÆ&ÆRÒG'VP¢6öçFWBç6WB¢'f6öå÷7FGW2"Â²'7F                  )
                     self._maybe_start_http(context, settings)
                     return
                 except Exception as exc:  # noqa: BLE001
@@ -190,7 +167,7 @@ class VisionPi4Module(Module):
                 host = "127.0.0.1"
             else:
                 logger.warning(
-                    "Vision HTTP server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+                    "Vision HTTP server configured to bind to 0.0.0.0 â ensure network access is restricted or use the generated/configured auth_token"
                 )
 
         module = self
@@ -220,6 +197,7 @@ class VisionPi4Module(Module):
                     self.send_response(404)
                     self.send_header("X-Content-Type-Options", "nosniff")
                     self.send_header("X-Frame-Options", "DENY")
+                    self.send_header("Content-Security-Policy", "default-src 'none'")
                     self.end_headers()
                     return
 

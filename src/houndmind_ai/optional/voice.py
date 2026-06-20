@@ -235,7 +235,7 @@ class VoiceModule(Module):
                 host = "127.0.0.1"
             else:
                 logger.warning(
-                    "Voice server configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
+                    "Voice server configured to bind to 0.0.0.0 â ensure network access is restricted or use the generated/configured auth_token"
                 )
 
         module = self
@@ -248,6 +248,7 @@ class VoiceModule(Module):
                 self.send_header("Content-Length", str(len(data)))
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Content-Security-Policy", "default-src 'none'")
                 self.end_headers()
                 self.wfile.write(data)
 
@@ -270,87 +271,7 @@ class VoiceModule(Module):
                     self._send_json({"status": "ok"})
                     return
                 if not self._auth_ok(params):
-                    self._send_json({"error": "unauthorized"}, status=401)
-                    return
-                if parsed.path == "/say":
-                    text = (params.get("text") or [None])[0]
-                    if not text:
-                        self._send_json({"error": "Missing text"}, status=400)
-                        return
-                    module._pending.append({"text": text})
-                    self._send_json({"status": "queued", "text": text})
-                    return
-                if parsed.path == "/command":
-                    action = (params.get("action") or [None])[0]
-                    if not action:
-                        self._send_json({"error": "Missing action"}, status=400)
-                        return
-                    module._pending.append({"action": action})
-                    self._send_json({"status": "queued", "action": action})
-                    return
-                self._send_json({"error": "Not found"}, status=404)
-
-            def do_POST(self):
-                parsed = urlparse(self.path)
-                params = parse_qs(parsed.query)
-                if parsed.path == "/status":
-                    self._send_json({"status": "ok"})
-                    return
-                if not self._auth_ok(params):
-                    self._send_json({"error": "unauthorized"}, status=401)
-                    return
-                length = int(self.headers.get("Content-Length", "0"))
-                if length > 1048576:  # 1MB limit to prevent DoS
-                    self._send_json({"error": "Payload too large"}, status=413)
-                    return
-                body = self.rfile.read(length).decode("utf-8") if length > 0 else ""
-                if parsed.path in {"/say", "/command"}:
-                    try:
-                        payload = json.loads(body) if body else {}
-                    except Exception:
-                        payload = {}
-                    if parsed.path == "/say":
-                        text = payload.get("text")
-                        if not text:
-                            self._send_json({"error": "Missing text"}, status=400)
-                            return
-                        module._pending.append({"text": text})
-                        self._send_json({"status": "queued", "text": text})
-                        return
-                    action = payload.get("action")
-                    if not action:
-                        self._send_json({"error": "Missing action"}, status=400)
-                        return
-                    module._pending.append({"action": action})
-                    self._send_json({"status": "queued", "action": action})
-                    return
-                self._send_json({"error": "Not found"}, status=404)
-
-            def log_message(self, format, *args):
-                return
-
-        try:
-            server = ThreadingHTTPServer((host, port), Handler)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to start voice HTTP server: %s", exc)
-            return
-        self._http_server = server
-        self._http_thread = threading.Thread(target=server.serve_forever, daemon=True)
-        self._http_thread.start()
-        logger.info("Voice HTTP server listening on %s:%s", host, port)
-
-    def _stt_loop(self, context) -> None:
-        """Background STT loop. Supports VOSK if available, otherwise SpeechRecognition.
-
-        Recognized text is appended to self._pending as {'text': ...} so the main
-        tick loop handles mapping and action invocation.
-        """
-        settings = (context.get("settings") or {}).get("voice_assistant", {})
-        stt_cfg = settings.get("stt", {})
-        backend = stt_cfg.get("backend", "speech_recognition")
-
-        # Prefer SpeechRecognition (network or local via installed engines)
-        if backend in {"auto", "speech_recognition", "speech-recognition"}:
+                    self._send_json({"ervæWF÷&¦VB'ÒÂ7FGW3ÓC¢&WGW&à¢b'6VBçFÓÒ"÷6# ¢FWBÒ&×2ævWB'FWB"÷"´æöæUÒ³Ð¢bæ÷BFWC ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$Ö76ærFWB'ÒÂ7FGW3ÓC¢&WGW&à¢ÖöGVÆRå÷VæFæræVæB²'FWB#¢FWGÒ¢6VÆbå÷6VæEö§6öâ²'7FGW2#¢'VWVVB"Â'FWB#¢FWGÒ¢&WGW&à¢b'6VBçFÓÒ"ö6öÖÖæB# ¢7FöâÒ&×2ævWB&7Föâ"÷"´æöæUÒ³Ð¢bæ÷B7Föã ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$Ö76ær7Föâ'ÒÂ7FGW3ÓC¢&WGW&à¢ÖöGVÆRå÷VæFæræVæB²&7Föâ#¢7FöçÒ¢6VÆbå÷6VæEö§6öâ²'7FGW2#¢'VWVVB"Â&7Föâ#¢7FöçÒ¢&WGW&à¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$æ÷Bf÷VæB'ÒÂ7FGW3ÓCB ¢FVbFõõõ5B6VÆb ¢'6VBÒW&Ç'6R6VÆbçF¢&×2Ò'6U÷2'6VBçVW'¢b'6VBçFÓÒ"÷7FGW2# ¢6VÆbå÷6VæEö§6öâ²'7FGW2#¢&ö²'Ò¢&WGW&à¢bæ÷B6VÆbåöWFöö²&×2 ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢'VæWF÷&¦VB'ÒÂ7FGW3ÓC¢&WGW&à¢ÆVæwFÒçB6VÆbæVFW'2ævWB$6öçFVçBÔÆVæwF"Â#"¢bÆVæwFâCSsc¢2Ô"ÆÖBFò&WfVçBFõ0¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢%ÆöBFöòÆ&vR'ÒÂ7FGW3ÓC2¢&WGW&à¢&öGÒ6VÆbç&fÆRç&VBÆVæwFæFV6öFR'WFbÓ"bÆVæwFâVÇ6R" ¢b'6VBçFâ²"÷6"Â"ö6öÖÖæB'Ó ¢G' ¢ÆöBÒ§6öâæÆöG2&öGb&öGVÇ6R·Ð¢W6WBW6WFöã ¢ÆöBÒ·Ð¢b'6VBçFÓÒ"÷6# ¢FWBÒÆöBævWB'FWB"¢bæ÷BFWC ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$Ö76ærFWB'ÒÂ7FGW3ÓC¢&WGW&à¢ÖöGVÆRå÷VæFæræVæB²'FWB#¢FWGÒ¢6VÆbå÷6VæEö§6öâ²'7FGW2#¢'VWVVB"Â'FWB#¢FWGÒ¢&WGW&à¢7FöâÒÆöBævWB&7Föâ"¢bæ÷B7Föã ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$Ö76ær7Föâ'ÒÂ7FGW3ÓC¢&WGW&à¢ÖöGVÆRå÷VæFæræVæB²&7Föâ#¢7FöçÒ¢6VÆbå÷6VæEö§6öâ²'7FGW2#¢'VWVVB"Â&7Föâ#¢7FöçÒ¢&WGW&à¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$æ÷Bf÷VæB'ÒÂ7FGW3ÓCB ¢FVbÆöuöÖW76vR6VÆbÂf÷&ÖBÂ¦&w2 ¢&WGW&à ¢G' ¢6W'fW"ÒF&VFætEE6W'fW"÷7BÂ÷'BÂæFÆW"¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær$fÆVBFò7F'Bfö6REE6W'fW#¢W2"ÂW2¢&WGW&à¢6VÆbåöGG÷6W'fW"Ò6W'fW ¢6VÆbåöGG÷F&VBÒF&VFæråF&VBF&vWC×6W'fW"ç6W'fUöf÷&WfW"ÂFVÖöãÕG'VR¢6VÆbåöGG÷F&VBç7F'B¢ÆövvW"ææfò%fö6REE6W'fW"Æ7FVææröâW3¢W2"Â÷7BÂ÷'B ¢FVb÷7GEöÆö÷6VÆbÂ6öçFWBÓâæöæS ¢""$&6¶w&÷VæB5EBÆö÷â7W÷'G2dõ4²bfÆ&ÆRÂ÷FW'v6R7VV6&V6övæFöâà ¢&V6övæ¦VBFWB2VæFVBFò6VÆbå÷VæFær2²wFWBs¢ââçÒ6òFRÖà¢F6²Æö÷æFÆW2ÖæræB7Föâçfö6Föâà¢"" ¢6WGFæw2Ò6öçFWBævWB'6WGFæw2"÷"·ÒævWB'fö6Uö767FçB"Â·Ò¢7GEö6frÒ6WGFæw2ævWB'7GB"Â·Ò¢&6¶VæBÒ7GEö6frævWB&&6¶VæB"Â'7VV6÷&V6övæFöâ" ¢2&VfW"7VV6&V6övæFöâæWGv÷&²÷"Æö6Âfç7FÆÆVBVævæW2¢b&6¶VæBâ²&W "speech-recognition"}:
             try:
                 import speech_recognition as sr  # type: ignore
 
@@ -380,79 +301,4 @@ class VoiceModule(Module):
                 logger.debug("SpeechRecognition not available or failed to initialize")
 
         # Fallback to VOSK if configured or available
-        if backend in {"auto", "vosk"}:
-            try:
-                from vosk import Model, KaldiRecognizer  # type: ignore
-                import pyaudio  # type: ignore
-
-                model_path = stt_cfg.get("vosk_model_path")
-                if model_path:
-                    try:
-                        model = Model(model_path)
-                        pa = pyaudio.PyAudio()
-                        stream = pa.open(
-                            format=pyaudio.paInt16,
-                            channels=1,
-                            rate=16000,
-                            input=True,
-                            frames_per_buffer=8000,
-                        )
-                        stream.start_stream()
-                        rec = KaldiRecognizer(model, 16000)
-                        logger.info("VOSK STT started")
-                        while not self._stt_stop.is_set():
-                            data = stream.read(4000, exception_on_overflow=False)
-                            if len(data) == 0:
-                                continue
-                            if rec.AcceptWaveform(data):
-                                res = rec.Result()
-                                try:
-                                    j = json.loads(res)
-                                    text = j.get("text", "").strip()
-                                except Exception:
-                                    text = ""
-                                if text:
-                                    self._pending.append({"text": text})
-                            else:
-                                pass
-                        try:
-                            stream.stop_stream()
-                            stream.close()
-                            pa.terminate()
-                        except Exception:
-                            pass
-                        return
-                    except Exception:
-                        logger.exception("VOSK model init failed")
-                else:
-                    logger.info("VOSK backend requested but no model path provided")
-            except Exception:
-                logger.debug("VOSK not available or failed to import")
-
-        logger.info("No STT backend available; STT loop exiting")
-
-    def stop(self, context) -> None:
-        # Stop STT thread
-        try:
-            if self._stt_thread is not None:
-                self._stt_stop.set()
-                self._stt_thread.join(timeout=1)
-        except Exception:
-            logger.exception("Failed to stop STT thread")
-
-        if self._http_server is not None:
-            try:
-                self._http_server.shutdown()
-                self._http_server.server_close()
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to stop voice HTTP server: %s", exc)
-
-        # Stop pyttsx3 engine if present
-        try:
-            if self._tts_engine is not None:
-                try:
-                    self._tts_engine.stop()
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        if backend in {"auwG' ¢g&öÒf÷6²×÷'BÖöFVÂÂ¶ÆF&V6övæ¦W"2GS¢væ÷&P¢×÷'BVFò2GS¢væ÷&P ¢ÖöFVÅ÷FÒ7GEö6frævWB'f÷6µöÖöFVÅ÷F"¢bÖöFVÅ÷F ¢G' ¢ÖöFVÂÒÖöFVÂÖöFVÅ÷F¢ÒVFòåVFò¢7G&VÒÒæ÷Vâ¢f÷&ÖC×VFòççCbÀ¢6ææVÇ3ÓÀ¢&FSÓcÀ¢çWCÕG'VRÀ¢g&ÖW5÷W%ö'VffW#ÓÀ¢¢7G&VÒç7F'E÷7G&VÒ¢&V2Ò¶ÆF&V6övæ¦W"ÖöFVÂÂc¢ÆövvW"ææfò%dõ4²5EB7F'FVB"¢vÆRæ÷B6VÆbå÷7GE÷7F÷æ5÷6WB ¢FFÒ7G&VÒç&VBCÂW6WFöåööåö÷fW&fÆ÷sÔfÇ6R¢bÆVâFFÓÒ ¢6öçFçVP¢b&V2ä66WEvfVf÷&ÒFF ¢&W2Ò&V2å&W7VÇB¢G' ¢¢Ò§6öâæÆöG2&W2¢FWBÒ¢ævWB'FWB"Â""ç7G&¢W6WBW6WFöã ¢FWBÒ" ¢bFWC ¢6VÆbå÷VæFæræVæB²'FWB#¢FWGÒ¢VÇ6S ¢70¢G' ¢7G&VÒç7F÷÷7G&VÒ¢7G&VÒæ6Æ÷6R¢çFW&ÖæFR¢W6WBW6WFöã ¢70¢&WGW&à¢W6WBW6WFöã ¢ÆövvW"æW6WFöâ%dõ4²ÖöFVÂæBfÆVB"¢VÇ6S ¢ÆövvW"ææfò%dõ4²&6¶VæB&WVW7FVB'WBæòÖöFVÂF&÷fFVB"¢W6WBW6WFöã ¢ÆövvW"æFV'Vr%dõ4²æ÷BfÆ&ÆR÷"fÆVBFò×÷'B" ¢ÆövvW"ææfò$æò5EB&6¶VæBfÆ&ÆS²5EBÆö÷WFær" ¢FVb7F÷6VÆbÂ6öçFWBÓâæöæS ¢27F÷5EBF&V@¢G' ¢b6VÆbå÷7GE÷F&VB2æ÷BæöæS ¢6VÆbå÷7GE÷7F÷ç6WB¢6VÆbå÷7GE÷F&VBæ¦öâFÖV÷WCÓ¢W6WBW6WFöã ¢ÆövvW"æW6WFöâ$fÆVBFò7F÷5EBF&VB" ¢b6VÆbåöGG÷6W'fW"2æ÷BæöæS ¢G' ¢6VÆbåöGG÷6W'fW"ç6WFF÷vâ¢6VÆbåöGG÷6W'fW"ç6W'fW%ö6Æ÷6R¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær$fÆVBFò7F÷fö6REE6W'fW#¢W2"ÂW2 ¢27F÷GG72VævæRb&W6Vç@¢G' ¢b6VÆbå÷GG5öVævæR2æ÷BæöæS ¢G' ¢6VÆbå÷GG5öVævæRç7F÷¢W6WBW6WFöã ¢70¢W6WBW6WFöã ¢70 

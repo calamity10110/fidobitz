@@ -31,6 +31,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'none'")
         self.end_headers()
         self.wfile.write(data)
 
@@ -89,108 +90,7 @@ class TelemetryHTTPHandler(BaseHTTPRequestHandler):
         query_trace = params.get("trace_id", [None])[0]
         req_trace = header_trace or query_trace or self.module._snapshot.get("trace_id")
         if not req_trace:
-            self._send_json({"error": "trace_id required"}, status=400)
-            return
-        zip_path = self.module.create_support_bundle_for_trace(req_trace)
-        if not zip_path:
-            self._send_json({"error": "failed to create bundle"}, status=500)
-            return
-        try:
-            with open(zip_path, "rb") as fh:
-                data = fh.read()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/zip")
-            self.send_header(
-                "Content-Disposition",
-                f'attachment; filename="support_bundle_{req_trace}.zip"',
-            )
-            self.send_header("Content-Length", str(len(data)))
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("X-Frame-Options", "DENY")
-            self.end_headers()
-            self.wfile.write(data)
-        except Exception:  # noqa: BLE001
-            logger.exception(
-                "Failed to read or send support bundle for trace %s", req_trace
-            )
-            self._send_json({"error": "Internal server error"}, status=500)
-
-    def _handle_download_slam_trajectory(self) -> None:
-        data = self.module._snapshot.get("slam_trajectory")
-        if data is None:
-            self._send_json({"error": "no trajectory"}, status=404)
-            return
-        self.send_response(200)
-        payload = json.dumps({"trajectory": data}, default=str).encode("utf-8")
-        self.send_header("Content-Type", "application/json")
-        self.send_header(
-            "Content-Disposition", 'attachment; filename="slam_trajectory.json"'
-        )
-        self.send_header("Content-Length", str(len(payload)))
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
-        self.end_headers()
-        self.wfile.write(payload)
-
-    def _handle_dashboard_html(self) -> None:
-        # Inject configured camera path into the dashboard HTML
-        html = (
-            _DASHBOARD_HTML.replace(
-                "{{CAMERA_PATH}}", str(getattr(self.module, "_camera_path", "/camera"))
-            )
-            .replace("{{AUTH_TOKEN}}", str(getattr(self.module, "_auth_token", "")))
-            .encode("utf-8")
-        )
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.send_header("Content-Length", str(len(html)))
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
-        self.send_header(
-            "Content-Security-Policy",
-            "default-src 'self' 'unsafe-inline'; img-src 'self' data:;",
-        )
-        self.end_headers()
-        self.wfile.write(html)
-
-    def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path
-        params = parse_qs(parsed.query)
-
-        # Public endpoint
-        if path == "/status":
-            self._handle_status()
-            return
-
-        # All other endpoints require authentication
-        if not self._auth_ok(params):
-            self._send_json({"error": "unauthorized"}, status=401)
-            return
-
-        if path == "/snapshot":
-            self._handle_snapshot(params)
-            return
-
-        if path == "/download_slam_map":
-            self._handle_download_slam_map()
-            return
-
-        if path == "/download_support_bundle":
-            self._handle_download_support_bundle(params)
-            return
-
-        if path == "/download_slam_trajectory":
-            self._handle_download_slam_trajectory()
-            return
-
-        if path == "/":
-            self._handle_dashboard_html()
-            return
-
-        self._send_json({"error": "Not found"}, status=404)
-
-    def log_message(self, format: str, *args: Any) -> None:
+            self._send_json({"ersC¢&WGW&à¢¦÷FÒ6VÆbæÖöGVÆRæ7&VFU÷7W÷'Eö'VæFÆUöf÷%÷G&6R&W÷G&6R¢bæ÷B¦÷F ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢&fÆVBFò7&VFR'VæFÆR'ÒÂ7FGW3ÓS¢&WGW&à¢G' ¢vF÷Vâ¦÷FÂ'&""2f ¢FFÒfç&VB¢6VÆbç6VæE÷&W7öç6R#¢6VÆbç6VæEöVFW"$6öçFVçBÕGR"Â&Æ6Föâ÷¦"¢6VÆbç6VæEöVFW"¢$6öçFVçBÔF7÷6Föâ"À¢bvGF6ÖVçC²fÆVæÖSÒ'7W÷'Eö'VæFÆU÷·&W÷G&6WÒç¦"rÀ¢¢6VÆbç6VæEöVFW"$6öçFVçBÔÆVæwF"Â7G"ÆVâFF¢6VÆbç6VæEöVFW"%Ô6öçFVçBÕGRÔ÷Föç2"Â&æ÷6æfb"¢6VÆbç6VæEöVFW"%Ôg&ÖRÔ÷Föç2"Â$DTå"¢6VÆbæVæEöVFW'2¢6VÆbçvfÆRçw&FRFF¢W6WBW6WFöã¢2æ÷¢$ÄS¢ÆövvW"æW6WFöâ¢$fÆVBFò&VB÷"6VæB7W÷'B'VæFÆRf÷"G&6RW2"Â&W÷G&6P¢¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢$çFW&æÂ6W'fW"W'&÷"'ÒÂ7FGW3ÓS ¢FVböæFÆUöF÷væÆöE÷6ÆÕ÷G&¦V7F÷'6VÆbÓâæöæS ¢FFÒ6VÆbæÖöGVÆRå÷6æ6÷BævWB'6ÆÕ÷G&¦V7F÷'"¢bFF2æöæS ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢&æòG&¦V7F÷''ÒÂ7FGW3ÓCB¢&WGW&à¢6VÆbç6VæE÷&W7öç6R#¢ÆöBÒ§6öâæGV×2²'G&¦V7F÷'#¢FFÒÂFVfVÇC×7G"æVæ6öFR'WFbÓ"¢6VÆbç6VæEöVFW"$6öçFVçBÕGR"Â&Æ6Föâö§6öâ"¢6VÆbç6VæEöVFW"¢$6öçFVçBÔF7÷6Föâ"ÂvGF6ÖVçC²fÆVæÖSÒ'6ÆÕ÷G&¦V7F÷'æ§6öâ"p¢¢6VÆbç6VæEöVFW"$6öçFVçBÔÆVæwF"Â7G"ÆVâÆöB¢6VÆbç6VæEöVFW"%Ô6öçFVçBÕGRÔ÷Föç2"Â&æ÷6æfb"¢6VÆbç6VæEöVFW"%Ôg&ÖRÔ÷Föç2"Â$DTå"¢6VÆbæVæEöVFW'2¢6VÆbçvfÆRçw&FRÆöB ¢FVböæFÆUöF6&ö&EöFÖÂ6VÆbÓâæöæS ¢2æ¦V7B6öæfwW&VB6ÖW&FçFòFRF6&ö&BDÔÀ¢FÖÂÒ¢ôD4$ô$EôDÔÂç&WÆ6R¢'·´4ÔU$õD×Ò"Â7G"vWFGG"6VÆbæÖöGVÆRÂ%ö6ÖW&÷F"Â"ö6ÖW&"¢¢ç&WÆ6R'·´UDõDô´Tç×Ò"Â7G"vWFGG"6VÆbæÖöGVÆRÂ%öWF÷Fö¶Vâ"Â""¢æVæ6öFR'WFbÓ"¢¢6VÆbç6VæE÷&W7öç6R#¢6VÆbç6VæEöVFW"$6öçFVçBÕGR"Â'FWBöFÖÂ"¢6VÆbç6VæEöVFW"$6öçFVçBÔÆVæwF"Â7G"ÆVâFÖÂ¢6VÆbç6VæEöVFW"%Ô6öçFVçBÕGRÔ÷Föç2"Â&æ÷6æfb"¢6VÆbç6VæEöVFW"%Ôg&ÖRÔ÷Föç2"Â$DTå"¢6VÆbç6VæEöVFW"¢$6öçFVçBÕ6V7W&GÕöÆ7"À¢&FVfVÇB×7&2w6VÆbrwVç6fRÖæÆæRs²Ör×7&2w6VÆbrFF£²"À¢¢6VÆbæVæEöVFW'2¢6VÆbçvfÆRçw&FRFÖÂ ¢FVbFõôtUB6VÆbÓâæöæS ¢'6VBÒW&Ç'6R6VÆbçF¢FÒ'6VBçF¢&×2Ò'6U÷2'6VBçVW' ¢2V&Æ2VæGöç@¢bFÓÒ"÷7FGW2# ¢6VÆbåöæFÆU÷7FGW2¢&WGW&à ¢2ÆÂ÷FW"VæGöçG2&WV&RWFVçF6Föà¢bæ÷B6VÆbåöWFöö²&×2 ¢6VÆbå÷6VæEö§6öâ²&W'&÷"#¢'VæWF÷&¦VB'ÒÂ7FGW3ÓC¢&WGW&à ¢bFÓÒ"÷6æ6÷B# ¢6VÆbåöæFÆU÷6æ6÷B&×2¢&WGW&à ¢bFÓÒ"öF÷væÆöE÷6ÆÕöÖ# ¢6VÆbåöæFÆUöF÷væÆöE÷6ÆÕöÖ¢&WGW&à ¢bFÓÒ"öF÷væÆöE÷7W÷'Eö'VæFÆR# ¢6VÆbåöæFÆUöF÷væÆöE÷7W÷'Eö'VæFÆR&×2¢&WGW&à ¢bFÓÒ"öF÷væÆöE÷6ÆÕ÷G&¦V7F÷'# ¢6VÆbåöæFÆUöF÷væÆöE÷6ÆÕ÷G&¦V7F÷'¢&WGW&à ¢bFÓÒ"ò# ¢6VÆbåöæFÆUöF6&ö&EöFÖÂ¢&WGW&à ¢6VÆbå÷6VæEö§6öâ²&W'  def log_message(self, format: str, *args: Any) -> None:
         # Suppress default HTTP server logging
         return
 
@@ -218,7 +118,7 @@ class TelemetryDashboardModule(Module):
         self.available = True
         settings = (context.get("settings") or {}).get("telemetry_dashboard", {})
         self._maybe_start_http(context, settings)
-        context.set("telemetry_status", {"status": "ready"})
+        context.set("telemetry_status", ready"})
 
     def get_snapshot_for_trace(self, trace_id: str) -> dict | None:
         """Return the current snapshot if its trace_id matches, otherwise None."""
@@ -328,766 +228,225 @@ class TelemetryDashboardModule(Module):
         }
         context.set("performance_telemetry", performance)
 
-        snapshot = {"timestamp": now}
-        for key in keys:
-            snapshot[key] = context.get(key)
-        # Surface trace_id at the top-level of the snapshot for correlation.
-        snapshot["trace_id"] = context.get("trace_id")
-        self._snapshot = snapshot
-        self._last_ts = now
-
-    def stop(self, context) -> None:
-        if self._http_server is not None:
-            try:
-                self._http_server.shutdown()
-                self._http_server.server_close()
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to stop telemetry server: %s", exc)
-
-    def _maybe_start_http(self, context, settings: dict) -> None:
-        http_settings = settings.get("http", {})
-        if not http_settings.get("enabled", False):
-            return
-        # Default to loopback for LAN-safe behavior. Allow overriding,
-        # but warn if binding to 0.0.0.0 (public) without explicit opt-in.
-        host = http_settings.get("host", "127.0.0.1")
-        port = int(http_settings.get("port", 8092))
-        # Configurable camera path for embedding a stream or single-frame URL
-        self._camera_path = http_settings.get("camera_path", "/camera")
-        # Optional simple token-based auth for endpoints that can expose
-        # sensitive data (support bundle, map downloads). If set, requests
-        # must include this token in `X-Auth-Token` header or `auth_token` query.
-        self._auth_token = get_shared_auth_token(context, http_settings)
-        if self._auth_token == context.get("shared_auth_token"):
-            logger.debug(
-                "No auth_token configured for telemetry dashboard; using generated shared session token."
-            )
-            # Only print it if it's the first time
-            if context.get("shared_auth_token_printed") is not True:
-                print(f"Generated shared session token: {self._auth_token}")
-                context.set("shared_auth_token_printed", True)
-
-        if host == "0.0.0.0":
-            if not http_settings.get("danger_allow_public", False):
-                logger.error(
-                    "Telemetry dashboard configured to bind to 0.0.0.0, but 'danger_allow_public' is not true. "
-                    "Falling back to 127.0.0.1 for security."
-                )
-                host = "127.0.0.1"
-            else:
-                logger.warning(
-                    "Telemetry dashboard configured to bind to 0.0.0.0 — ensure network access is restricted or use the generated/configured auth_token"
-                )
-
-        # Create a subclass of our handler that has this module instance bound to it
-        class BoundHandler(TelemetryHTTPHandler):
-            module = self
-
-        try:
-            server = ThreadingHTTPServer((host, port), BoundHandler)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to start telemetry server: %s", exc)
-            return
-        self._http_server = server
-        self._http_thread = threading.Thread(target=server.serve_forever, daemon=True)
-        self._http_thread.start()
-        logger.info("Telemetry dashboard on http://%s:%s/", host, port)
-
-
-_DASHBOARD_HTML = """
-<!doctype html>
-<html lang="en" data-theme="system">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>HoundMind Control Panel</title>
-    <style>
-        /* Design Token System Foundation */
-        :root {
-            /* Light Theme Tokens */
-            --bg-primary: #f8fafc;
-            --bg-secondary: #ffffff;
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --border-color: #e2e8f0;
-            --accent-primary: #3b82f6;
-            --accent-hover: #2563eb;
-            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-
-            /* Typography Scale */
-            --text-xs: 0.75rem;
-            --text-sm: 0.875rem;
-            --text-base: 1rem;
-            --text-lg: 1.125rem;
-            --text-xl: 1.25rem;
-
-            /* Spacing System */
-            --space-1: 0.25rem;
-            --space-2: 0.5rem;
-            --space-3: 0.75rem;
-            --space-4: 1rem;
-            --space-6: 1.5rem;
-            --space-8: 2rem;
-
-            /* Layout System */
-            --container-max: 1280px;
-            --border-radius: 12px;
-            --transition-speed: 0.3s;
-        }
-
-        /* Dark Theme Tokens */
-        [data-theme="dark"] {
-            --bg-primary: #020617;
-            --bg-secondary: #0f172a;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --border-color: #1e293b;
-            --accent-primary: #38bdf8;
-            --accent-hover: #7dd3fc;
-            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-        }
-
-        /* System Theme Preference */
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme="light"]) {
-                --bg-primary: #020617;
-                --bg-secondary: #0f172a;
-                --text-primary: #f8fafc;
-                --text-secondary: #94a3b8;
-                --border-color: #1e293b;
-                --accent-primary: #38bdf8;
-                --accent-hover: #7dd3fc;
-                --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-            }
-        }
-
-        /* Base Reset & Typography */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.5;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            transition: background-color var(--transition-speed), color var(--transition-speed);
-        }
-
-        /* Layout Architecture */
-        .container {
-            width: 100%;
-            max-width: var(--container-max);
-            margin: 0 auto;
-            padding: var(--space-4);
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-6);
-            flex: 1;
-        }
-
-        .header {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: var(--space-4);
-            padding: var(--space-4) 0;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: var(--space-2);
-        }
-
-        .header-title {
-            display: flex;
-            align-items: center;
-            gap: var(--space-3);
-        }
-
-        .header h1 {
-            font-size: var(--text-xl);
-            font-weight: 600;
-            letter-spacing: -0.025em;
-        }
-
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: var(--space-4);
-            flex-wrap: wrap;
-        }
-
-        /* Component: Cards */
-        .card {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: var(--space-6);
-            box-shadow: var(--card-shadow);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-4);
-            overflow: hidden;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: var(--space-3);
-            margin-bottom: var(--space-2);
-        }
-
-        .card-title {
-            font-size: var(--text-lg);
-            font-weight: 600;
-        }
-
-        .meta {
-            color: var(--text-secondary);
-            font-size: var(--text-sm);
-        }
-
-        /* Grid Patterns */
-        .grid-main {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--space-6);
-        }
-
-        @media (min-width: 1024px) {
-            .grid-main {
-                grid-template-columns: 3fr 2fr;
-                align-items: start;
-            }
-        }
-
-        .grid-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: var(--space-4);
-        }
-
-        .stat-item {
-            background-color: var(--bg-primary);
-            padding: var(--space-3);
-            border-radius: calc(var(--border-radius) / 1.5);
-            border: 1px solid var(--border-color);
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: var(--text-lg);
-            font-weight: 700;
-            color: var(--accent-primary);
-            margin-top: var(--space-1);
-        }
-
-        /* Media / Camera Feed */
-        .camera-container {
-            background-color: #000;
-            border-radius: calc(var(--border-radius) - 4px);
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 300px;
-            position: relative;
-        }
-
-        #camera {
-            width: 100%;
-            height: auto;
-            max-height: 600px;
-            object-fit: contain;
-        }
-
-        /* Typography / Code Output */
-        pre {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            padding: var(--space-4);
-            border-radius: calc(var(--border-radius) / 1.5);
-            border: 1px solid var(--border-color);
-            font-family: 'JetBrains Mono', monospace, Consolas;
-            font-size: var(--text-xs);
-            overflow-x: auto;
-            max-height: 400px;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-
-        /* Buttons & Interactions */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-2);
-            padding: var(--space-2) var(--space-4);
-            font-size: var(--text-sm);
-            font-weight: 500;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            background-color: var(--accent-primary);
-            color: #ffffff;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--accent-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn-outline {
-            background-color: transparent;
-            border-color: var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .btn-outline:hover {
-            background-color: var(--bg-primary);
-            border-color: var(--accent-primary);
-            color: var(--accent-primary);
-        }
-
-        .btn:focus-visible {
-            outline: 2px solid var(--accent-primary);
-            outline-offset: 2px;
-        }
-
-        /* Theme Toggle Component */
-        .theme-toggle {
-            display: inline-flex;
-            align-items: center;
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 4px;
-            gap: 2px;
-        }
-
-        .theme-toggle-option {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: var(--text-xs);
-            font-weight: 500;
-            color: var(--text-secondary);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .theme-toggle-option:hover {
-            color: var(--text-primary);
-        }
-
-        .theme-toggle-option.active {
-            background-color: var(--accent-primary);
-            color: #ffffff;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #10b981; /* Success Green */
-            box-shadow: 0 0 8px #10b981;
-        }
-
-        .status-indicator.offline {
-            background-color: #ef4444; /* Error Red */
-            box-shadow: 0 0 8px #ef4444;
-        }
-
-        /* Badges */
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: var(--text-xs);
-            font-weight: 500;
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header & Top Navigation -->
-        <header class="header">
-            <div class="header-title">
-                <div class="status-indicator" id="connection_status" title="Connection Status"></div>
-                <h1>HoundMind Control Panel</h1>
-                <span class="badge" id="trace_id" title="Current Trace ID">Waiting for data...</span>
-                <button id="copy_trace" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.7rem;" aria-label="Copy Trace ID">Copy ID</button>
-            </div>
-
-            <div class="header-controls">
-                <button id="download_bundle" class="btn btn-outline" aria-label="Download Support Bundle">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Support Bundle
-                </button>
-
-                <!-- Theme Toggle -->
-                <div class="theme-toggle" role="radiogroup" aria-label="Theme selection">
-                    <button class="theme-toggle-option" data-theme="light" role="radio" aria-checked="false" aria-label="Light mode">☀️</button>
-                    <button class="theme-toggle-option" data-theme="dark" role="radio" aria-checked="false" aria-label="Dark mode">🌙</button>
-                    <button class="theme-toggle-option active" data-theme="system" role="radio" aria-checked="true" aria-label="System mode">💻</button>
-                </div>
-            </div>
-        </header>
-
-        <!-- Main Content Grid -->
-        <main class="grid-main">
-            <!-- Left Column: Camera Feed & Quick Stats -->
-            <div style="display: flex; flex-direction: column; gap: var(--space-6);">
-                <section class="card" aria-labelledby="camera-title">
-                    <div class="card-header">
-                        <h2 id="camera-title" class="card-title">Live Vision</h2>
-                        <span class="badge"><span id="vision_fps">--</span> FPS</span>
-                    </div>
-                    <div class="camera-container">
-                        <img id="camera" src="{{CAMERA_PATH}}" alt="Live camera feed from robot"/>
-                    </div>
-                </section>
-
-                <section class="card" aria-labelledby="stats-title">
-                    <div class="card-header">
-                        <h2 id="stats-title" class="card-title">Performance Telemetry</h2>
-                    </div>
-                    <div class="grid-stats">
-                        <div class="stat-item">
-                            <div class="meta">Tick Rate</div>
-                            <div class="stat-value"><span id="tick_rate">--</span> Hz</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="meta">Memory Used</div>
-                            <div class="stat-value"><span id="mem_used">--</span>%</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="meta">CPU Load (1m)</div>
-                            <div class="stat-value"><span id="cpu_load">--</span></div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="meta">CPU Temp</div>
-                            <div class="stat-value"><span id="cpu_temp">--</span>°C</div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Right Column: Data Streams & Controls -->
-            <div style="display: flex; flex-direction: column; gap: var(--space-6);">
-                <section class="card" aria-labelledby="snapshot-title">
-                    <div class="card-header">
-                        <div>
-                            <h2 id="snapshot-title" class="card-title">State Snapshot</h2>
-                            <div class="meta">Synchronizes every 500ms</div>
-                        </div>
-                        <button id="refresh" class="btn btn-primary" aria-label="Refresh Data Streams">Refresh</button>
-                    </div>
-                    <pre id="output" tabindex="0" aria-label="Raw snapshot JSON output">Connecting to telemetry stream...</pre>
-                </section>
-
-                <section class="card" aria-labelledby="slam-title">
-                    <div class="card-header">
-                        <h2 id="slam-title" class="card-title">SLAM Data</h2>
-                        <div style="display: flex; gap: var(--space-2);">
-                            <button id="download_map" class="btn btn-outline btn-sm" aria-label="Download Map">Map</button>
-                            <button id="download_traj" class="btn btn-outline btn-sm" aria-label="Download Trajectory">Trajectory</button>
-                        </div>
-                    </div>
-                    <pre id="slam" tabindex="0" aria-label="SLAM data output">No SLAM data available</pre>
-                </section>
-            </div>
-        </div>
-        <script>
-            const camera = document.getElementById('camera');
-            const out = document.getElementById('output');
-            const quick = document.getElementById('quick');
-            const fpsLabel = document.getElementById('vision_fps');
-            const refresh = document.getElementById('refresh');
-            const authToken = "{{AUTH_TOKEN}}";
-            let last = 0;
-
-            function getAuthUrl(path) {
-                const url = new URL(path, window.location.origin);
-                if (authToken) url.searchParams.set('auth_token', authToken);
-                return url.toString();
-            }
-
-            async function tick(){
-                try{
-                    const headers = authToken ? { 'X-Auth-Token': authToken } : {};
-                    const res = await fetch('/snapshot', { headers });
-                    const data = await res.json();
-                    out.textContent = JSON.stringify(data, null, 2);
-                    // expose trace id in header for quick copying
-                    const traceEl = document.getElementById('trace_id');
-                    traceEl.textContent = data.trace_id || '-';
-                    const perf = data.performance_telemetry || {};
-                    fpsLabel.textContent = perf.vision_fps ? perf.vision_fps.toFixed(1) : '-';
-                    quick.textContent = `tick ${perf.tick_hz_actual || '-'} • mem ${perf.mem_used_pct || '-'}%`;
-                    const slamEl = document.getElementById('slam');
-                    if(data.slam_map_data || data.slam_trajectory){
-                        slamEl.textContent = JSON.stringify({map: data.slam_map_data, trajectory: data.slam_trajectory}, null, 2);
-                    } else {
-                        slamEl.textContent = 'No SLAM data';
-                    }
-                });
-            }
-
-            getStoredTheme() {
-                return localStorage.getItem('houndmind-theme');
-            }
-
-            applyTheme(theme) {
-                if (theme === 'system') {
-                    document.documentElement.setAttribute('data-theme', 'system');
-                } else {
-                    document.documentElement.setAttribute('data-theme', theme);
-                }
-                localStorage.setItem('houndmind-theme', theme);
-                this.currentTheme = theme;
-                this.updateToggleUI();
-            }
-
-            initializeToggle() {
-                const options = document.querySelectorAll('.theme-toggle-option');
-                options.forEach(opt => {
-                    opt.addEventListener('click', (e) => {
-                        const newTheme = e.currentTarget.dataset.theme;
-                        this.applyTheme(newTheme);
-                    });
-                });
-            }
-
-            updateToggleUI() {
-                const options = document.querySelectorAll('.theme-toggle-option');
-                options.forEach(option => {
-                    const isActive = option.dataset.theme === this.currentTheme;
-                    option.classList.toggle('active', isActive);
-                    option.setAttribute('aria-checked', isActive.toString());
-                });
-            }
-        }
-
-        // Initialize theme
-        document.addEventListener('DOMContentLoaded', () => {
-            new ThemeManager();
-        });
-
-        // --- Application Logic ---
-        const camera = document.getElementById('camera');
-        const out = document.getElementById('output');
-
-        // Stats elements
-        const fpsLabel = document.getElementById('vision_fps');
-        const tickRate = document.getElementById('tick_rate');
-        const memUsed = document.getElementById('mem_used');
-        const cpuLoad = document.getElementById('cpu_load');
-        const cpuTemp = document.getElementById('cpu_temp');
-        const statusIndicator = document.getElementById('connection_status');
-
-        let consecutiveErrors = 0;
-
-        async function tick() {
-            try {
-                const res = await fetch('/snapshot');
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-
-                // Update Connection Status
-                consecutiveErrors = 0;
-                statusIndicator.classList.remove('offline');
-
-                // Output raw JSON
-                out.textContent = JSON.stringify(data, null, 2);
-
-                // Update Trace ID
-                const traceEl = document.getElementById('trace_id');
-                traceEl.textContent = data.trace_id || 'N/A';
-
-                // Update Performance Telemetry
-                const perf = data.performance_telemetry || {};
-                fpsLabel.textContent = perf.vision_fps ? perf.vision_fps.toFixed(1) : '--';
-                tickRate.textContent = perf.tick_hz_actual ? perf.tick_hz_actual.toFixed(1) : '--';
-                memUsed.textContent = perf.mem_used_pct ? perf.mem_used_pct.toFixed(1) : '--';
-                cpuLoad.textContent = perf.cpu_load_1m ? perf.cpu_load_1m.toFixed(2) : '--';
-                cpuTemp.textContent = perf.cpu_temp_c ? perf.cpu_temp_c.toFixed(1) : '--';
-
-                // Update SLAM Data
-                const slamEl = document.getElementById('slam');
-                if(data.slam_map_data || data.slam_trajectory) {
-                    slamEl.textContent = JSON.stringify({
-                        map: data.slam_map_data ? "Map data available" : null,
-                        trajectory: data.slam_trajectory ? "Trajectory available" : null
-                    }, null, 2);
-                } else {
-                    slamEl.textContent = 'No SLAM data available';
-                }
-            } catch(e) {
-                consecutiveErrors++;
-                if(consecutiveErrors > 2) {
-                    statusIndicator.classList.add('offline');
-                }
-                out.textContent = 'Connection Error: ' + e.message;
-            }
-        }
-
-        // Avoid caching single-frame camera endpoints
-        function reloadCamera() {
-            const base = camera.getAttribute('src').split('?')[0];
-            camera.src = base + '?ts=' + Date.now();
-        }
-
-        // Event Listeners
-        document.getElementById('refresh').addEventListener('click', () => {
-            tick();
-            reloadCamera();
-        });
-
-        document.getElementById('copy_trace').addEventListener('click', () => {
-            const txt = document.getElementById('trace_id').textContent || '';
-            if(!txt || txt === 'Waiting for data...' || txt === 'N/A') return;
-            try {
-                navigator.clipboard.writeText(txt);
-                const btn = document.getElementById('copy_trace');
-                const origText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = origText, 2000);
-            } catch(e) {
-                alert('Copy failed: ' + e);
-            }
-        });
-
-        document.getElementById('download_bundle').addEventListener('click', async () => {
-            const txt = document.getElementById('trace_id').textContent || '';
-            if(!txt || txt === 'Waiting for data...' || txt === 'N/A') {
-                alert('No trace ID available. Cannot generate bundle.');
-                return;
-            }
-            try {
-                const btn = document.getElementById('download_bundle');
-                const origHtml = btn.innerHTML;
-                btn.innerHTML = 'Downloading...';
-                btn.disabled = true;
-
-                const res = await fetch('/download_support_bundle?trace_id=' + encodeURIComponent(txt));
-                if(!res.ok) {
-                    const err = await res.json().catch(()=>null);
-                    alert('Failed to create bundle: ' + (err && err.error ? err.error : res.statusText));
-                } else {
-            // Avoid caching single-frame camera endpoints by adding a timestamp
-            function reloadCamera(){
-                const base = camera.getAttribute('src').split('?')[0];
-                const camUrl = new URL(base, window.location.origin);
-                camUrl.searchParams.set('ts', Date.now());
-                if (authToken && !base.startsWith('http')) {
-                    camUrl.searchParams.set('auth_token', authToken);
-                }
-                camera.src = camUrl.toString();
-            }
-            refresh.addEventListener('click', ()=>{ tick(); reloadCamera(); });
-            document.getElementById('copy_trace').addEventListener('click', ()=>{
-                const txt = document.getElementById('trace_id').textContent || '';
-                if(!txt || txt === '-') return; try{ navigator.clipboard.writeText(txt); alert('Trace id copied') }catch(e){ alert('Copy failed') }
-            });
-
-            document.getElementById('download_bundle').addEventListener('click', async ()=>{
-                const txt = document.getElementById('trace_id').textContent || '';
-                if(!txt || txt === '-') { alert('No trace id available'); return }
-                try{
-                    const bundleUrl = new URL('/download_support_bundle', window.location.origin);
-                    bundleUrl.searchParams.set('trace_id', txt);
-                    if (authToken) bundleUrl.searchParams.set('auth_token', authToken);
-                    const res = await fetch(bundleUrl.toString());
-                    if(!res.ok){
-                        const err = await res.json().catch(()=>null);
-                        alert('Failed to create bundle: ' + (err && err.error ? err.error : res.statusText));
-                        return
-                    }
-                    const blob = await res.blob();
-                    const dlUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = dlUrl;
-                    a.download = `support_bundle_${txt}.zip`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                }
-                btn.innerHTML = origHtml;
-                btn.disabled = false;
-            } catch(e) {
-                alert('Download failed: ' + e);
-                document.getElementById('download_bundle').disabled = false;
-            }
-        });
-
-        document.getElementById('download_map').addEventListener('click', async () => {
-            const res = await fetch('/download_slam_map');
-            if(res.ok) {
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = 'slam_map.json'; a.click();
-            } else { alert('No map data available on server') }
-        });
-
-        document.getElementById('download_traj').addEventListener('click', async () => {
-            const res = await fetch('/download_slam_trajectory');
-            if(res.ok) {
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = 'slam_trajectory.json'; a.click();
-            } else { alert('No trajectory data available on server') }
-        });
-
-        // Main Loop
-        setInterval(() => { tick(); reloadCamera(); }, 500);
-        tick();
-    </script>
-</body>
-                    URL.revokeObjectURL(dlUrl);
-                }catch(e){ alert('Download failed: '+e) }
-            });
-            document.getElementById('download_map').addEventListener('click', async ()=>{
-                const res = await fetch(getAuthUrl('/download_slam_map'));
-                if(res.ok){
-                    const blob = await res.blob();
-                    const dlUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = dlUrl; a.download = 'slam_map.json'; a.click();
-                    URL.revokeObjectURL(dlUrl);
-                } else { alert('No map data') }
-            });
-            document.getElementById('download_traj').addEventListener('click', async ()=>{
-                const res = await fetch(getAuthUrl('/download_slam_trajectory'));
-                if(res.ok){
-                    const blob = await res.blob();
-                    const dlUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = dlUrl; a.download = 'slam_trajectory.json'; a.click();
-                    URL.revokeObjectURL(dlUrl);
-                } else { alert('No trajectory') }
-            });
-            setInterval(()=>{ tick(); reloadCamera(); }, 500);
-            tick();
-        </script>
-    </body>
-</html>
-"""
+        snapshot = {"tibf÷"¶Wâ¶W3 ¢6æ6÷E¶¶WÒÒ6öçFWBævWB¶W¢27W&f6RG&6UöBBFRF÷ÖÆWfVÂöbFR6æ6÷Bf÷"6÷'&VÆFöâà¢6æ6÷E²'G&6UöB%ÒÒ6öçFWBævWB'G&6UöB"¢6VÆbå÷6æ6÷BÒ6æ6÷@¢6VÆbåöÆ7E÷G2Òæ÷p ¢FVb7F÷6VÆbÂ6öçFWBÓâæöæS ¢b6VÆbåöGG÷6W'fW"2æ÷BæöæS ¢G' ¢6VÆbåöGG÷6W'fW"ç6WFF÷vâ¢6VÆbåöGG÷6W'fW"ç6W'fW%ö6Æ÷6R¢W6WBW6WFöâ2W3¢2æ÷¢$ÄS¢ÆövvW"çv&æær$fÆVBFò7F÷FVÆVÖWG'6W'fW#¢W2"ÂW2 ¢FVböÖ&U÷7F'EöGG6VÆbÂ6öçFWBÂ6WGFæw3¢F7BÓâæöæS ¢GG÷6WGFæw2Ò6WGFæw2ævWB&GG"Â·Ò¢bæ÷BGG÷6WGFæw2ævWB&Væ&ÆVB"ÂfÇ6R ¢&WGW&à¢2FVfVÇBFòÆö÷&6²f÷"Äâ×6fR&Vf÷"âÆÆ÷r÷fW'&FærÀ¢2'WBv&âb&æFærFòãããV&Æ2vF÷WBWÆ6B÷BÖâà¢÷7BÒGG÷6WGFæw2ævWB&÷7B"Â##rããã"¢÷'BÒçBGG÷6WGFæw2ævWB'÷'B"Â"¢26öæfwW&&ÆR6ÖW&Ff÷"VÖ&VFFær7G&VÒ÷"6ævÆRÖg&ÖRU$À¢6VÆbåö6ÖW&÷FÒGG÷6WGFæw2ævWB&6ÖW&÷F"Â"ö6ÖW&"¢2÷FöæÂ6×ÆRFö¶VâÖ&6VBWFf÷"VæGöçG2FB6âW÷6P¢26Vç6FfRFF7W÷'B'VæFÆRÂÖF÷væÆöG2âb6WBÂ&WVW7G0¢2×W7Bæ6ÇVFRF2Fö¶VââÔWFÕFö¶VæVFW"÷"WF÷Fö¶VæVW'à¢6VÆbåöWF÷Fö¶VâÒvWE÷6&VEöWF÷Fö¶Vâ6öçFWBÂGG÷6WGFæw2¢b6VÆbåöWF÷Fö¶VâÓÒ6öçFWBævWB'6&VEöWF÷Fö¶Vâ" ¢ÆövvW"æFV'Vr¢$æòWF÷Fö¶Vâ6öæfwW&VBf÷"FVÆVÖWG'F6&ö&C²W6ærvVæW&FVB6&VB6W76öâFö¶Vââ ¢¢2öæÇ&çBBbBw2FRf'7BFÖP¢b6öçFWBævWB'6&VEöWF÷Fö¶Vå÷&çFVB"2æ÷BG'VS ¢&çBb$vVæW&FVB6&VB6W76öâFö¶Vã¢·6VÆbåöWF÷Fö¶VçÒ"¢6öçFWBç6WB'6&VEöWF÷Fö¶Vå÷&çFVB"ÂG'VR ¢b÷7BÓÒ#ããã# ¢bæ÷BGG÷6WGFæw2ævWB&FævW%öÆÆ÷u÷V&Æ2"ÂfÇ6R ¢ÆövvW"æW'&÷"¢%FVÆVÖWG'F6&ö&B6öæfwW&VBFò&æBFòãããÂ'WBvFævW%öÆÆ÷u÷V&Æ2r2æ÷BG'VRâ ¢$fÆÆær&6²Fò#rãããf÷"6V7W&Gâ ¢Q3ÔM4T4 ?tïÇ!j»(+myÚ.¶ù÷Nü¶ZXÚÙÜÝ[XÛÛÜÌÂÜ\\Y]\ÎØ[Ê\KXÜ\\Y]\ÊHH
+NÂÝ\ÝÎY[Â\Ü^N^Â[YÛZ][\ÎÙ[\Â\ÝYKXÛÛ[Ù[\ÂZ[ZZYÚÌÂÜÚ][Û[]]NÂBØØ[Y\HÂÚYL	NÂZYÚ]]ÎÂX^ZZYÚÂØXÝY]ÛÛZ[ÂBÊ\ÙÜ\HÈÛÙHÝ]]
+ÂHÂXÚÙÜÝ[XÛÛÜ\KXË\[X\JNÂÛÛÜ\K]^\[X\JNÂY[Î\K\ÜXÙKM
+NÂÜ\\Y]\ÎØ[Ê\KXÜ\\Y]\ÊHÈKJNÂÜ\\ÛÛY\KXÜ\XÛÛÜNÂÛY[Z[N	Ò]Z[È[ÛÉË[ÛÜÜXÙKÛÛÛÛ\ÎÂÛ\Ú^N\K]^^ÊNÂÝ\ÝË^]]ÎÂX^ZZYÚÂÚ]K\ÜXÙNK]Ü\ÂÛÜXXZÎXZËX[ÂBÊ]ÛÈ	[\XÝ[ÛÈ
+ÂÂ\Ü^N[[KY^Â[YÛZ][\ÎÙ[\Â\ÝYKXÛÛ[Ù[\ÂØ\\K\ÜXÙKLNÂY[Î\K\ÜXÙKLH\K\ÜXÙKM
+NÂÛ\Ú^N\K]^\ÛJNÂÛ]ÙZYÚLÂÜ\\Y]\ÎÂÝ\ÛÜÚ[\Â[Ú][Û[ÈX\ÙNÂÜ\\ÛÛY[Ü\[Â^YXÛÜ][ÛÛNÂB\[X\HÂXÚÙÜÝ[XÛÛÜ\KXXØÙ[\[X\JNÂÛÛÜÙÂB\[X\NÝ\ÂXÚÙÜÝ[XÛÛÜ\KXXØÙ[ZÝ\NÂ[ÙÜN[Û]VJL\
+NÂB[Ý][HÂXÚÙÜÝ[XÛÛÜ[Ü\[ÂÜ\XÛÛÜ\KXÜ\XÛÛÜNÂÛÛÜ\K]^\[X\JNÂB[Ý][NÝ\ÂXÚÙÜÝ[XÛÛÜ\KXË\[X\JNÂÜ\XÛÛÜ\KXXØÙ[\[X\JNÂÛÛÜ\KXXØÙ[\[X\JNÂBØÝ\Ë]\ÚXHÂÝ][NÛÛY\KXXØÙ[\[X\JNÂÝ][K[ÙÙ]ÂBÊ[YHÙÙÛHÛÛ\Û[
+Â[YK]ÙÙÛHÂ\Ü^N[[KY^Â[YÛZ][\ÎÙ[\ÂXÚÙÜÝ[XÛÛÜ\KXË\ÙXÛÛ\JNÂÜ\\ÛÛY\KXÜ\XÛÛÜNÂÜ\\Y]\ÎÂY[ÎÂØ\ÂB[YK]ÙÙÛK[Ü[ÛÂ\Ü^N^Â[YÛZ][\ÎÙ[\Â\ÝYKXÛÛ[Ù[\ÂY[ÎLÂÜ\\Y]\ÎÂÛ\Ú^N\K]^^ÊNÂÛ]ÙZYÚLÂÛÛÜ\K]^\ÙXÛÛ\JNÂXÚÙÜÝ[[Ü\[ÂÜ\ÛNÂÝ\ÛÜÚ[\Â[Ú][Û[ÈX\ÙNÂB[YK]ÙÙÛK[Ü[ÛÝ\ÂÛÛÜ\K]^\[X\JNÂB[YK]ÙÙÛK[Ü[ÛXÝ]HÂXÚÙÜÝ[XÛÛÜ\KXXØÙ[\[X\JNÂÛÛÜÙÂÞ\ÚYÝÎ\ØJJNÂBÝ]\ËZ[XØ]ÜÂ\Ü^N[[KXØÚÎÂÚYÂZYÚÂÜ\\Y]\ÎL	NÂXÚÙÜÝ[XÛÛÜÌLNNÈÊÝXØÙ\ÜÈÜY[
+ÂÞ\ÚYÝÎÌLNNÂBÝ]\ËZ[XØ]ÜÙ[HÂXÚÙÜÝ[XÛÛÜÙYÈÊ\ÜY
+ÂÞ\ÚYÝÎÙYÂBÊYÙ\È
+ÂYÙHÂ\Ü^N[[KY^Â[YÛZ][\ÎÙ[\ÂY[ÎÂÜ\\Y]\ÎLÂÛ\Ú^N\K]^^ÊNÂÛ]ÙZYÚLÂXÚÙÜÝ[XÛÛÜ\KXË\[X\JNÂÜ\\ÛÛY\KXÜ\XÛÛÜNÂBÜÝ[OÚXYÙO]Û\ÜÏHÛÛZ[\KKHXY\	Ü]YØ][ÛKOXY\Û\ÜÏHXY\]Û\ÜÏHXY\]]H]Û\ÜÏHÝ]\ËZ[XØ]ÜYHÛÛXÝ[ÛÜÝ]\È]OHÛÛXÝ[ÛÝ]\ÈÙ]OÝ[Z[ÛÛÛ[[ÚOÜ[Û\ÜÏHYÙHYHXÙWÚY]OHÝ\[XÙHQØZ][ÈÜ]KÜÜ[]ÛYHÛÜWÝXÙHÛ\ÜÏH[Ý][HÝ[OHY[ÎÈÛ\Ú^NÜ[NÈ\XK[X[HÛÜHXÙHQÛÜHQØ]ÛÙ]]Û\ÜÏHXY\XÛÛÛÈ]ÛYHÝÛØYØ[HÛ\ÜÏH[Ý][H\XK[X[HÝÛØYÝ\Ü[HÝÈÚYHMZYÚHMY]ÐÞH[HÛHÝÚÙOHÝ\[ÛÛÜÝÚÙK]ÚYHÝÚÙK[[XØ\HÝ[ÝÚÙK[[ZÚ[HÝ[]HLHM]LKLXLKLLMÜ]Û[[HÚ[ÏHÈLLMHMÈLÜÛ[[O[HOHLLOHMHHLLHÈÛ[OÜÝÏÝ\Ü[BØ]ÛKKH[YHÙÙÛHKO]Û\ÜÏH[YK]ÙÙÛHÛOHY[ÙÜÝ\\XK[X[H[YHÙ[XÝ[Û]ÛÛ\ÜÏH[YK]ÙÙÛK[Ü[Û]K][YOHYÚÛOHY[È\XKXÚXÚÙYH[ÙH\XK[X[HYÚ[ÙH¸¦ ;î#ÏØ]Û]ÛÛ\ÜÏH[YK]ÙÙÛK[Ü[Û]K][YOH\ÈÛOHY[È\XKXÚXÚÙYH[ÙH\XK[X[H\È[ÙH¼'ã&OØ]Û]ÛÛ\ÜÏH[YK]ÙÙÛK[Ü[ÛXÝ]H]K][YOHÞ\Ý[HÛOHY[È\XKXÚXÚÙYHYH\XK[X[HÞ\Ý[H[ÙH¼'ä®ÏØ]ÛÙ]Ù]ÚXY\KKHXZ[ÛÛ[ÜYKOXZ[Û\ÜÏHÜY[XZ[KKHYÛÛ[[Ø[Y\HYY	]ZXÚÈÝ]ÈKO]Ý[OH\Ü^N^È^Y\XÝ[ÛÛÛ[[ÈØ\\K\ÜXÙKMNÈÙXÝ[ÛÛ\ÜÏHØ\\XK[X[YOHØ[Y\K]]H]Û\ÜÏHØ\ZXY\YHØ[Y\K]]HÛ\ÜÏHØ\]]H]H\Ú[ÛÚÜ[Û\ÜÏHYÙHÜ[YH\Ú[ÛÙÈKOÜÜ[ÏÜÜ[Ù]]Û\ÜÏHØ[Y\KXÛÛZ[\[YÈYHØ[Y\HÜÏHÞÐÐSQTWÔU_H[H]HØ[Y\HYYÛHØÝÏÙ]ÜÙXÝ[ÛÙXÝ[ÛÛ\ÜÏHØ\\XK[X[YOHÝ]Ë]]H]Û\ÜÏHØ\ZXY\YHÝ]Ë]]HÛ\ÜÏHØ\]]H\ÜX[ÙH[[Y]OÚÙ]]Û\ÜÏHÜY\Ý]È]Û\ÜÏHÝ]Z][H]Û\ÜÏHY]HXÚÈ]OÙ]]Û\ÜÏHÝ]][YHÜ[YHXÚ×Ü]HKOÜÜ[Ù]Ù]]Û\ÜÏHÝ]Z][H]Û\ÜÏHY]HY[[ÜH\ÙYÙ]]Û\ÜÏHÝ]][YHÜ[YHY[WÝ\ÙYKOÜÜ[OÙ]Ù]]Û\ÜÏHÝ]Z][H]Û\ÜÏHY]HÔHØY
+[JOÙ]]Û\ÜÏHÝ]][YHÜ[YHÜWÛØYKOÜÜ[Ù]Ù]]Û\ÜÏHÝ]Z][H]Û\ÜÏHY]HÔH[\Ù]]Û\ÜÏHÝ]][YHÜ[YHÜWÝ[\KOÜÜ[°¬ÏÙ]Ù]Ù]ÜÙXÝ[ÛÙ]KKHYÚÛÛ[[]HÝX[\È	ÛÛÛÈKO]Ý[OH\Ü^N^È^Y\XÝ[ÛÛÛ[[ÈØ\\K\ÜXÙKMNÈÙXÝ[ÛÛ\ÜÏHØ\\XK[X[YOHÛ\ÚÝ]]H]Û\ÜÏHØ\ZXY\]YHÛ\ÚÝ]]HÛ\ÜÏHØ\]]HÝ]HÛ\ÚÝÚ]Û\ÜÏHY]HÞ[ÚÛ^\È]\HL\ÏÙ]Ù]]ÛYHY\ÚÛ\ÜÏH\[X\H\XK[X[HY\Ú]HÝX[\ÈY\ÚØ]ÛÙ]HYHÝ]]X[^H\XK[X[H]ÈÛ\ÚÝÓÓÝ]]ÛÛXÝ[ÈÈ[[Y]HÝX[KÜOÜÙXÝ[ÛÙXÝ[ÛÛ\ÜÏHØ\\XK[X[YOHÛ[K]]H]Û\ÜÏHØ\ZXY\YHÛ[K]]HÛ\ÜÏHØ\]]HÓSH]OÚ]Ý[OH\Ü^N^ÈØ\\K\ÜXÙKLNÈ]ÛYHÝÛØYÛX\Û\ÜÏH[Ý][H\ÛH\XK[X[HÝÛØYX\X\Ø]Û]ÛYHÝÛØYÝZÛ\ÜÏH[Ý][H\ÛH\XK[X[HÝÛØYZXÝÜHZXÝÜOØ]ÛÙ]Ù]HYHÛ[HX[^H\XK[X[HÓSH]HÝ]]ÈÓSH]H]Z[XOÜOÜÙXÝ[ÛÙ]Ù]ØÜ\ÛÛÝØ[Y\HHØÝ[Y[Ù][[Y[RY
+	ØØ[Y\IÊNÂÛÛÝÝ]HØÝ[Y[Ù][[Y[RY
+	ÛÝ]]	ÊNÂÛÛÝ]ZXÚÈHØÝ[Y[Ù][[Y[RY
+	Ü]ZXÚÉÊNÂÛÛÝÓX[HØÝ[Y[Ù][[Y[RY
+	Ý\Ú[ÛÙÉÊNÂÛÛÝY\ÚHØÝ[Y[Ù][[Y[RY
+	ÜY\Ú	ÊNÂÛÛÝ]]ÚÙ[HÞÐUUÕÒÑS_HÂ]\ÝHÂ[Ý[ÛÙ]]]\
+]
+HÂÛÛÝ\H]ÈT
+]Ú[ÝËØØ][ÛÜYÚ[NÂY
+]]ÚÙ[H\ÙX\Ú\[\ËÙ]
+	Ø]]ÝÚÙ[Ë]]ÚÙ[NÂ]\\ÔÝ[Ê
+NÂB\Þ[È[Ý[ÛXÚÊ
+^Â^ÂÛÛÝXY\ÈH]]ÚÙ[ÈÈ	ÖP]]UÚÙ[Î]]ÚÙ[HßNÂÛÛÝ\ÈH]ØZ]]Ú
+	ËÜÛ\ÚÝ	ËÈXY\ÈJNÂÛÛÝ]HH]ØZ]\ËÛÛ
+NÂÝ]^ÛÛ[HÓÓÝ[ÚYJ]K[NÂËÈ^ÜÙHXÙHY[XY\Ü]ZXÚÈÛÜZ[ÂÛÛÝXÙQ[HØÝ[Y[Ù][[Y[RY
+	ÝXÙWÚY	ÊNÂXÙQ[^ÛÛ[H]KXÙWÚY	ËIÎÂÛÛÝ\H]K\ÜX[ÙWÝ[[Y]HßNÂÓX[^ÛÛ[H\\Ú[ÛÙÈÈ\\Ú[ÛÙËÑ^Y
+JH	ËIÎÂ]ZXÚË^ÛÛ[HXÚÈ	Ü\XÚ×ÚØXÝX[	ËIßH8 (Y[H	Ü\Y[WÝ\ÙYÜÝ	ËIßIXÂÛÛÝÛ[Q[HØÝ[Y[Ù][[Y[RY
+	ÜÛ[IÊNÂY]KÛ[WÛX\Ù]H]KÛ[WÝZXÝÜJ^ÂÛ[Q[^ÛÛ[HÓÓÝ[ÚYJÛX\]KÛ[WÛX\Ù]KZXÝÜN]KÛ[WÝZXÝÜ_K[NÂH[ÙHÂÛ[Q[^ÛÛ[H	ÓÈÓSH]IÎÂBJNÂBÙ]ÝÜY[YJ
+HÂ]\ØØ[ÝÜYÙKÙ]][J	ÚÝ[Z[][YIÊNÂB\U[YJ[YJHÂY
+[YHOOH	ÜÞ\Ý[IÊHÂØÝ[Y[ØÝ[Y[[[Y[Ù]]X]J	Ù]K][YIË	ÜÞ\Ý[IÊNÂH[ÙHÂØÝ[Y[ØÝ[Y[[[Y[Ù]]X]J	Ù]K][YIË[YJNÂBØØ[ÝÜYÙKÙ]][J	ÚÝ[Z[][YIË[YJNÂ\ËÝ\[[YHH[YNÂ\Ë\]UÙÙÛURJ
+NÂB[]X[^UÙÙÛJ
+HÂÛÛÝÜ[ÛÈHØÝ[Y[]Y\TÙ[XÝÜ[
+	Ë[YK]ÙÙÛK[Ü[ÛÊNÂÜ[ÛËÜXXÚ
+ÜOÂÜY][\Ý[\	ØÛXÚÉË
+JHOÂÛÛÝ]Õ[YHHKÝ\[\Ù]]\Ù][YNÂ\Ë\U[YJ]Õ[YJNÂJNÂJNÂB\]UÙÙÛURJ
+HÂÛÛÝÜ[ÛÈHØÝ[Y[]Y\TÙ[XÝÜ[
+	Ë[YK]ÙÙÛK[Ü[ÛÊNÂÜ[ÛËÜXXÚ
+Ü[ÛOÂÛÛÝ\ÐXÝ]HHÜ[Û]\Ù][YHOOH\ËÝ\[[YNÂÜ[ÛÛ\ÜÓ\ÝÙÙÛJ	ØXÝ]IË\ÐXÝ]JNÂÜ[ÛÙ]]X]J	Ø\XKXÚXÚÙY	Ë\ÐXÝ]KÔÝ[Ê
+JNÂJNÂBBËÈ[]X[^H[YBØÝ[Y[Y][\Ý[\	ÑÓPÛÛ[ØYY	Ë
+
+HOÂ]È[YSX[YÙ\
+NÂJNÂËÈKKH\XØ][ÛÙÚXÈKKBÛÛÝØ[Y\HHØÝ[Y[Ù][[Y[RY
+	ØØ[Y\IÊNÂÛÛÝÝ]HØÝ[Y[Ù][[Y[RY
+	ÛÝ]]	ÊNÂËÈÝ]È[[Y[ÂÛÛÝÓX[HØÝ[Y[Ù][[Y[RY
+	Ý\Ú[ÛÙÉÊNÂÛÛÝXÚÔ]HHØÝ[Y[Ù][[Y[RY
+	ÝXÚ×Ü]IÊNÂÛÛÝY[U\ÙYHØÝ[Y[Ù][[Y[RY
+	ÛY[WÝ\ÙY	ÊNÂÛÛÝÜSØYHØÝ[Y[Ù][[Y[RY
+	ØÜWÛØY	ÊNÂÛÛÝÜU[\HØÝ[Y[Ù][[Y[RY
+	ØÜWÝ[\	ÊNÂÛÛÝÝ]\Ò[XØ]ÜHØÝ[Y[Ù][[Y[RY
+	ØÛÛXÝ[ÛÜÝ]\ÉÊNÂ]ÛÛÙXÝ]]Q\ÜÈHÂ\Þ[È[Ý[ÛXÚÊ
+HÂHÂÛÛÝ\ÈH]ØZ]]Ú
+	ËÜÛ\ÚÝ	ÊNÂY
+\\ËÚÊHÝÈ]È\Ü	Ü\ËÝ]\ßX
+NÂÛÛÝ]HH]ØZ]\ËÛÛ
+NÂËÈ\]HÛÛXÝ[ÛÝ]\ÂÛÛÙXÝ]]Q\ÜÈHÂÝ]\Ò[XØ]ÜÛ\ÜÓ\Ý[[ÝJ	ÛÙ[IÊNÂËÈÝ]]]ÈÓÓÝ]^ÛÛ[HÓÓÝ[ÚYJ]K[NÂËÈ\]HXÙHQÛÛÝXÙQ[HØÝ[Y[Ù][[Y[RY
+	ÝXÙWÚY	ÊNÂXÙQ[^ÛÛ[H]KXÙWÚY	ÓÐIÎÂËÈ\]H\ÜX[ÙH[[Y]BÛÛÝ\H]K\ÜX[ÙWÝ[[Y]HßNÂÓX[^ÛÛ[H\\Ú[ÛÙÈÈ\\Ú[ÛÙËÑ^Y
+JH	ËKIÎÂXÚÔ]K^ÛÛ[H\XÚ×ÚØXÝX[È\XÚ×ÚØXÝX[Ñ^Y
+JH	ËKIÎÂY[U\ÙY^ÛÛ[H\Y[WÝ\ÙYÜÝÈ\Y[WÝ\ÙYÜÝÑ^Y
+JH	ËKIÎÂÜSØY^ÛÛ[H\ÜWÛØYÌ[HÈ\ÜWÛØYÌ[KÑ^Y
+H	ËKIÎÂÜU[\^ÛÛ[H\ÜWÝ[\ØÈÈ\ÜWÝ[\ØËÑ^Y
+JH	ËKIÎÂËÈ\]HÓSH]BÛÛÝÛ[Q[HØÝ[Y[Ù][[Y[RY
+	ÜÛ[IÊNÂY]KÛ[WÛX\Ù]H]KÛ[WÝZXÝÜJHÂÛ[Q[^ÛÛ[HÓÓÝ[ÚYJÂX\]KÛ[WÛX\Ù]HÈX\]H]Z[XH[ZXÝÜN]KÛ[WÝZXÝÜHÈZXÝÜH]Z[XH[K[NÂH[ÙHÂÛ[Q[^ÛÛ[H	ÓÈÓSH]H]Z[XIÎÂBHØ]Ú
+JHÂÛÛÙXÝ]]Q\ÜÊÊÎÂYÛÛÙXÝ]]Q\ÜÈHÂÝ]\Ò[XØ]ÜÛ\ÜÓ\ÝY
+	ÛÙ[IÊNÂBÝ]^ÛÛ[H	ÐÛÛXÝ[Û\Ü	È
+ÈKY\ÜØYÙNÂBBËÈ]ÚYØXÚ[ÈÚ[ÛKY[YHØ[Y\H[Ú[Â[Ý[Û[ØYØ[Y\J
+HÂÛÛÝ\ÙHHØ[Y\KÙ]]X]J	ÜÜÉÊKÜ]
+	ÏÉÊVÌNÂØ[Y\KÜÈH\ÙH
+È	ÏÝÏIÈ
+È]KÝÊ
+NÂBËÈ][\Ý[\ÂØÝ[Y[Ù][[Y[RY
+	ÜY\Ú	ÊKY][\Ý[\	ØÛXÚÉË
+
+HOÂXÚÊ
+NÂ[ØYØ[Y\J
+NÂJNÂØÝ[Y[Ù][[Y[RY
+	ØÛÜWÝXÙIÊKY][\Ý[\	ØÛXÚÉË
+
+HOÂÛÛÝHØÝ[Y[Ù][[Y[RY
+	ÝXÙWÚY	ÊK^ÛÛ[	ÉÎÂY]OOH	ÕØZ][ÈÜ]KÈOOH	ÓÐIÊH]\ÂHÂ]YØ]ÜÛ\Ø\Ü]U^
+
+NÂÛÛÝHØÝ[Y[Ù][[Y[RY
+	ØÛÜWÝXÙIÊNÂÛÛÝÜYÕ^H^ÛÛ[Â^ÛÛ[H	ÐÛÜYYIÎÂÙ][Y[Ý]
+
+
+HO^ÛÛ[HÜYÕ^
+NÂHØ]Ú
+JHÂ[\
+	ÐÛÜHZ[Y	È
+ÈJNÂBJNÂØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYØ[IÊKY][\Ý[\	ØÛXÚÉË\Þ[È
+
+HOÂÛÛÝHØÝ[Y[Ù][[Y[RY
+	ÝXÙWÚY	ÊK^ÛÛ[	ÉÎÂY]OOH	ÕØZ][ÈÜ]KÈOOH	ÓÐIÊHÂ[\
+	ÓÈXÙHQ]Z[XKØ[ÝÙ[\]H[KÊNÂ]\ÂBHÂÛÛÝHØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYØ[IÊNÂÛÛÝÜYÒ[H[\SÂ[\SH	ÑÝÛØY[ËÎÂ\ØXYHYNÂÛÛÝ\ÈH]ØZ]]Ú
+	ËÙÝÛØYÜÝ\ÜØ[OÝXÙWÚYIÈ
+È[ÛÙUTPÛÛ\Û[
+
+JNÂY\\ËÚÊHÂÛÛÝ\H]ØZ]\ËÛÛ
+KØ]Ú
+
+
+OO[
+NÂ[\
+	ÑZ[YÈÜX]H[N	È
+È
+\	\\ÜÈ\\Ü\ËÝ]\Õ^
+JNÂH[ÙHÂËÈ]ÚYØXÚ[ÈÚ[ÛKY[YHØ[Y\H[Ú[ÈHY[ÈH[Y\Ý[\[Ý[Û[ØYØ[Y\J
+^ÂÛÛÝ\ÙHHØ[Y\KÙ]]X]J	ÜÜÉÊKÜ]
+	ÏÉÊVÌNÂÛÛÝØ[U\H]ÈT
+\ÙKÚ[ÝËØØ][ÛÜYÚ[NÂØ[U\ÙX\Ú\[\ËÙ]
+	ÝÉË]KÝÊ
+JNÂY
+]]ÚÙ[	X\ÙKÝ\ÕÚ]
+	Ú	ÊJHÂØ[U\ÙX\Ú\[\ËÙ]
+	Ø]]ÝÚÙ[Ë]]ÚÙ[NÂBØ[Y\KÜÈHØ[U\ÔÝ[Ê
+NÂBY\ÚY][\Ý[\	ØÛXÚÉË
+
+OOÈXÚÊ
+NÈ[ØYØ[Y\J
+NÈJNÂØÝ[Y[Ù][[Y[RY
+	ØÛÜWÝXÙIÊKY][\Ý[\	ØÛXÚÉË
+
+OOÂÛÛÝHØÝ[Y[Ù][[Y[RY
+	ÝXÙWÚY	ÊK^ÛÛ[	ÉÎÂY]OOH	ËIÊH]\È^È]YØ]ÜÛ\Ø\Ü]U^
+
+NÈ[\
+	ÕXÙHYÛÜYY	ÊHXØ]Ú
+J^È[\
+	ÐÛÜHZ[Y	ÊHBJNÂØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYØ[IÊKY][\Ý[\	ØÛXÚÉË\Þ[È
+
+OOÂÛÛÝHØÝ[Y[Ù][[Y[RY
+	ÝXÙWÚY	ÊK^ÛÛ[	ÉÎÂY]OOH	ËIÊHÈ[\
+	ÓÈXÙHY]Z[XIÊNÈ]\B^ÂÛÛÝ[U\H]ÈT
+	ËÙÝÛØYÜÝ\ÜØ[IËÚ[ÝËØØ][ÛÜYÚ[NÂ[U\ÙX\Ú\[\ËÙ]
+	ÝXÙWÚY	Ë
+NÂY
+]]ÚÙ[H[U\ÙX\Ú\[\ËÙ]
+	Ø]]ÝÚÙ[Ë]]ÚÙ[NÂÛÛÝ\ÈH]ØZ]]Ú
+[U\ÔÝ[Ê
+JNÂY\\ËÚÊ^ÂÛÛÝ\H]ØZ]\ËÛÛ
+KØ]Ú
+
+
+OO[
+NÂ[\
+	ÑZ[YÈÜX]H[N	È
+È
+\	\\ÜÈ\\Ü\ËÝ]\Õ^
+JNÂ]\BÛÛÝØH]ØZ]\ËØ
+NÂÛÛÝ\HTÜX]SØXÝT
+ØNÂÛÛÝHHØÝ[Y[ÜX]Q[[Y[
+	ØIÊNÂKYH\ÂKÝÛØYHÝ\ÜØ[WÉÝK\ÂKÛXÚÊ
+NÂT]ÚÙSØXÝT
+\
+NÂB[\SHÜYÒ[Â\ØXYH[ÙNÂHØ]Ú
+JHÂ[\
+	ÑÝÛØYZ[Y	È
+ÈJNÂØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYØ[IÊK\ØXYH[ÙNÂBJNÂØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYÛX\	ÊKY][\Ý[\	ØÛXÚÉË\Þ[È
+
+HOÂÛÛÝ\ÈH]ØZ]]Ú
+	ËÙÝÛØYÜÛ[WÛX\	ÊNÂY\ËÚÊHÂÛÛÝØH]ØZ]\ËØ
+NÂÛÛÝ\HTÜX]SØXÝT
+ØNÂÛÛÝHHØÝ[Y[ÜX]Q[[Y[
+	ØIÊNÂKYH\ÈKÝÛØYH	ÜÛ[WÛX\ÛÛÎÈKÛXÚÊ
+NÂH[ÙHÈ[\
+	ÓÈX\]H]Z[XHÛÙ\\ÊHBJNÂØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYÝZÊKY][\Ý[\	ØÛXÚÉË\Þ[È
+
+HOÂÛÛÝ\ÈH]ØZ]]Ú
+	ËÙÝÛØYÜÛ[WÝZXÝÜIÊNÂY\ËÚÊHÂÛÛÝØH]ØZ]\ËØ
+NÂÛÛÝ\HTÜX]SØXÝT
+ØNÂÛÛÝHHØÝ[Y[ÜX]Q[[Y[
+	ØIÊNÂKYH\ÈKÝÛØYH	ÜÛ[WÝZXÝÜKÛÛÎÈKÛXÚÊ
+NÂH[ÙHÈ[\
+	ÓÈZXÝÜH]H]Z[XHÛÙ\\ÊHBJNÂËÈXZ[ÛÜÙ][\[
+
+
+HOÈXÚÊ
+NÈ[ØYØ[Y\J
+NÈKL
+NÂXÚÊ
+NÂÜØÜ\ØÙOT]ÚÙSØXÝT
+\
+NÂXØ]Ú
+J^È[\
+	ÑÝÛØYZ[Y	ÊÙJHBJNÂØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYÛX\	ÊKY][\Ý[\	ØÛXÚÉË\Þ[È
+
+OOÂÛÛÝ\ÈH]ØZ]]Ú
+Ù]]]\
+	ËÙÝÛØYÜÛ[WÛX\	ÊJNÂY\ËÚÊ^ÂÛÛÝØH]ØZ]\ËØ
+NÂÛÛÝ\HTÜX]SØXÝT
+ØNÂÛÛÝHHØÝ[Y[ÜX]Q[[Y[
+	ØIÊNÂKYH\ÈKÝÛØYH	ÜÛ[WÛX\ÛÛÎÈKÛXÚÊ
+NÂT]ÚÙSØXÝT
+\
+NÂH[ÙHÈ[\
+	ÓÈX\]IÊHBJNÂØÝ[Y[Ù][[Y[RY
+	ÙÝÛØYÝZÊKY][\Ý[\	ØÛXÚÉË\Þ[È
+
+OOÂÛÛÝ\ÈH]ØZ]]Ú
+Ù]]]\
+	ËÙÝÛØYÜÛ[WÝZXÝÜIÊJNÂY\ËÚÊ^ÂÛÛÝØH]ØZ]\ËØ
+NÂÛÛÝ\HTÜX]SØXÝT
+ØNÂÛÛÝHHØÝ[Y[ÜX]Q[[Y[
+	ØIÊNÂKYH\ÈKÝÛØYH	ÜÛ[WÝZXÝÜKÛÛÎÈKÛXÚÊ
+NÂT]ÚÙSØXÝT
+\
+NÂH[ÙHÈ[\
+	ÓÈZXÝÜIÊHBJNÂÙ][\[
+
+
+OOÈXÚÊ
+NÈ[ØYØ[Y\J
+NÈKL
+NÂXÚÊ
+NÂÜØÜ\ØÙOÚ[
