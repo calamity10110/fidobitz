@@ -55,3 +55,7 @@
 ## 2025-02-16 - Inline aggregations to single loop
 **Learning:** Aggregating metrics using separate helper functions over the same collection causes redundant O(N) traversals. Combining them into a single pass loop improves performance.
 **Action:** When calculating multiple aggregations or metrics over a list, inline the operations into a single loop to eliminate redundant O(N) traversals.
+
+## $(date +%Y-%m-%d) - Unroll Iterator Loops in Pathfinding Inner Loops
+**Learning:** In highly performance-critical Python paths like the inner node evaluation loop of an A* pathfinder, iterating over constant offset coordinates (e.g., `for dx, dy in ((-1, 0), (1, 0), ...):`) introduces measurable overhead due to iterator allocation and tuple unpacking per node evaluated.
+**Action:** Unroll loops over small, fixed collections of offsets in extremely hot paths manually by writing sequential coordinate checks (e.g., explicitly calculate `x - 1, y`, then `x + 1, y`, etc.). This avoids the iterator allocation and tuple unpacking overhead, providing significant performance speedups.
