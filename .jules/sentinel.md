@@ -43,8 +43,3 @@
 **Vulnerability:** Input validation using `re.match` with a `$` anchor allows a string ending with a trailing newline character (e.g., `valid\n`) to pass validation unexpectedly.
 **Learning:** In Python, `re.match` strictly matches from the beginning of the string, but the `$` anchor can match right before a trailing newline. This slight nuance allows for unexpected string structures that might cause injection vulnerabilities if downstream consumers (like loggers or command executions) handle the newline unsafely.
 **Prevention:** Use `re.fullmatch` instead of `re.match` when enforcing strict input boundaries across the entire string. `re.fullmatch` strictly evaluates the input from start to end, preventing hidden newline bypasses.
-
-## 2026-06-20 - Missing CSP Headers Across BaseHTTPRequestHandler Handlers
-**Vulnerability:** Found multiple missing Content-Security-Policy (CSP) headers across custom HTTP handlers implemented directly on top of `BaseHTTPRequestHandler` (in `telemetry_dashboard.py`, `face_recognition.py`, `voice.py`, and `vision_pi4.py`).
-**Learning:** Raw use of `BaseHTTPRequestHandler` meant that each custom endpoint or download action had to manually reconstruct its security headers, causing security headers to be missed or implemented inconsistently compared to typical web frameworks that use centralized middleware.
-**Prevention:** Always verify all security headers (such as CSP, X-Frame-Options, X-Content-Type-Options) are explicitly manually attached for each individual response when relying on the lower-level `BaseHTTPRequestHandler`. Consider wrapping these with a utility function.
